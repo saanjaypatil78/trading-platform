@@ -1,0 +1,90 @@
+version: '3.8'
+
+services:
+  # 1. Database (Essential)
+  postgres:
+    image: timescale/timescaledb:latest-pg15
+    container_name: trading-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-trading_platform}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres123}
+    volumes:
+      - postgres-data-lite:/var/lib/postgresql/data
+    restart: unless-stopped
+    # Limit resources
+    deploy:
+      resources:
+        limits:
+          memory: 300M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # 2. Redis (Essential for Caching/Queue)
+  redis:
+    image: redis:7-alpine
+    container_name: trading-redis
+    repository: redis
+    command: redis-server --appendonly yes --maxmemory 100mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis-data-lite:/data
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # 3. Unified Backend Service (Run EVERYTHING in one container to save RAM)
+  # Instead of 5 separate containers, we run one "Monolith" that mounts all routers
+  # NOTE: You must update main.py or launcher.py to support this "Monolith" mode specifically
+  # For now, we will run just the CRITICAL services: Market Data + Auth + Brain
+
+  backend-core:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile.monolith
+      # We need a new Dockerfile that copies ALL code
+    container_name: trading-backend
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres123}@postgres:5432/${POSTGRES_DB:-trading_platform}
+      - REDIS_URL=redis://redis:6379/0
+      - ALPACA_API_KEY=${ALPACA_API_KEY}
+      - ALPACA_API_SECRET=${ALPACA_API_SECRET}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+    ports:
+      - "8000:8000"
+    depends_on:
+      - postgres
+      - redis
+    command: uvicorn backend.unified_entrypoint:app --host 0.0.0.0 --port 8000
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # 4. Nginx (Optional on Free Tier, can expose 8000 directly or use this)
+  # Keeping it for security/SSL termination
+  nginx:
+    image: nginx:alpine
+    container_name: trading-nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./infrastructure/docker/nginx/nginx.lite.conf:/etc/nginx/nginx.conf
+    depends_on:
+      - backend-core
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  postgres-data-lite:
+  redis-data-lite:

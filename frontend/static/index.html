@@ -1,0 +1,868 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trading Platform - No-Build Frontend</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        :root {
+            --bg-primary: #0f172a;
+            --bg-secondary: #1e293b;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --accent-blue: #3b82f6;
+            --accent-green: #22c55e;
+            --accent-red: #ef4444;
+            --accent-purple: #a855f7;
+        }
+
+        body {
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            font-family: 'Inter', system-ui, sans-serif;
+        }
+
+        .card {
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: var(--accent-blue);
+        }
+
+        .btn-green {
+            background: var(--accent-green);
+        }
+
+        .btn-red {
+            background: var(--accent-red);
+        }
+
+        .btn:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+        }
+
+        .input {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 8px 12px;
+            color: white;
+        }
+
+        .tab {
+            padding: 12px 24px;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+        }
+
+        .tab.active {
+            border-color: var(--accent-blue);
+            color: var(--accent-blue);
+        }
+
+        .loading {
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
+        }
+    </style>
+</head>
+
+<body class="min-h-screen">
+    <!-- Header -->
+    <header class="border-b border-white/10 px-6 py-4">
+        <div class="max-w-7xl mx-auto flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div
+                    class="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+                    <i data-lucide="trending-up" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold">Trading Platform</h1>
+                    <p class="text-xs text-gray-400">Chartink + OpenAlgo Alternative</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-4">
+                <span id="api-status" class="flex items-center gap-2 text-sm">
+                    <span class="w-2 h-2 rounded-full bg-yellow-500"></span>
+                    Connecting...
+                </span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Navigation Tabs -->
+    <nav class="border-b border-white/10 px-6">
+        <div class="max-w-7xl mx-auto flex gap-2">
+            <div class="tab active" data-tab="scanner">Scanner</div>
+            <div class="tab" data-tab="orders">Orders</div>
+            <div class="tab" data-tab="brain">AI Brain</div>
+            <div class="tab" data-tab="defi">DeFi (Passive)</div>
+            <div class="tab" data-tab="strategy">AI Strategy</div>
+            <div class="tab" data-tab="performance">Performance</div>
+            <div class="tab" data-tab="monitor">Monitor</div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto p-6">
+        <!-- Scanner Tab -->
+        <div id="tab-scanner" class="tab-content">
+            <div class="grid gap-6">
+                <!-- Scanner Builder -->
+                <div class="card p-6">
+                    <h2 class="text-lg font-semibold mb-4 flex items-center gap-2">
+                        <i data-lucide="search" class="w-5 h-5 text-blue-400"></i>
+                        Stock Scanner
+                    </h2>
+
+                    <!-- Quick Templates -->
+                    <div class="flex gap-2 mb-4 flex-wrap">
+                        <button class="btn btn-primary text-sm" onclick="loadTemplate('rsi_overbought')">RSI >
+                            70</button>
+                        <button class="btn btn-primary text-sm" onclick="loadTemplate('rsi_oversold')">RSI < 30</button>
+                                <button class="btn btn-primary text-sm" onclick="loadTemplate('golden_cross')">Golden
+                                    Cross</button>
+                                <button class="btn btn-primary text-sm" onclick="loadTemplate('death_cross')">Death
+                                    Cross</button>
+                    </div>
+
+                    <!-- Conditions -->
+                    <div id="conditions" class="space-y-3 mb-4">
+                        <div class="condition flex items-center gap-2 p-3 rounded-lg bg-black/20">
+                            <select class="input flex-1" id="cond-left">
+                                <option value="rsi(14)">RSI (14)</option>
+                                <option value="sma(close, 50)">SMA (50)</option>
+                                <option value="sma(close, 200)">SMA (200)</option>
+                                <option value="close">Close Price</option>
+                                <option value="volume">Volume</option>
+                            </select>
+                            <select class="input w-32" id="cond-op">
+                                <option value=">">&gt; Greater</option>
+                                <option value="<">&lt; Less</option>
+                                <option value=">=">&gt;= Greater or Equal</option>
+                                <option value="<=">&lt;= Less or Equal</option>
+                            </select>
+                            <input type="text" class="input flex-1" id="cond-right" value="70" placeholder="Value">
+                        </div>
+                    </div>
+
+                    <button class="btn btn-green w-full flex items-center justify-center gap-2" onclick="runScan()">
+                        <i data-lucide="play" class="w-4 h-4"></i>
+                        Run Scan
+                    </button>
+                </div>
+
+                <!-- Results -->
+                <div class="card p-6">
+                    <h3 class="text-lg font-semibold mb-4">Scan Results</h3>
+                    <div id="scan-results" class="text-gray-400 text-center py-8">
+                        Run a scan to see results
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Orders Tab -->
+        <div id="tab-orders" class="tab-content hidden">
+            <div class="grid gap-6">
+                <!-- Funds Overview -->
+                <div class="grid grid-cols-4 gap-4">
+                    <div class="card p-4">
+                        <p class="text-xs text-gray-400">Available Cash</p>
+                        <p id="funds-available" class="text-2xl font-bold text-green-400">₹10,00,000</p>
+                    </div>
+                    <div class="card p-4">
+                        <p class="text-xs text-gray-400">Used Margin</p>
+                        <p id="funds-margin" class="text-2xl font-bold">₹0</p>
+                    </div>
+                    <div class="card p-4">
+                        <p class="text-xs text-gray-400">Day P&L</p>
+                        <p id="funds-pnl" class="text-2xl font-bold text-green-400">+₹0</p>
+                    </div>
+                    <div class="card p-4">
+                        <p class="text-xs text-gray-400">Open Orders</p>
+                        <p id="funds-orders" class="text-2xl font-bold">0</p>
+                    </div>
+                </div>
+
+                <!-- Order Entry -->
+                <div class="card p-6">
+                    <h3 class="text-lg font-semibold mb-4">Place Order</h3>
+                    <div class="grid grid-cols-5 gap-4 mb-4">
+                        <div>
+                            <label class="text-xs text-gray-400 block mb-1">Symbol</label>
+                            <input type="text" class="input w-full" id="order-symbol" value="RELIANCE">
+                        </div>
+                        <div>
+                            <label class="text-xs text-gray-400 block mb-1">Quantity</label>
+                            <input type="number" class="input w-full" id="order-qty" value="10">
+                        </div>
+                        <div>
+                            <label class="text-xs text-gray-400 block mb-1">Type</label>
+                            <select class="input w-full" id="order-type">
+                                <option value="MARKET">Market</option>
+                                <option value="LIMIT">Limit</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-xs text-gray-400 block mb-1">Price</label>
+                            <input type="number" class="input w-full" id="order-price" placeholder="Market">
+                        </div>
+                        <div>
+                            <label class="text-xs text-gray-400 block mb-1">Product</label>
+                            <select class="input w-full" id="order-product">
+                                <option value="MIS">MIS (Intraday)</option>
+                                <option value="CNC">CNC (Delivery)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="flex gap-4">
+                        <button class="btn btn-green flex-1 py-3 flex items-center justify-center gap-2"
+                            onclick="placeOrder('BUY')">
+                            <i data-lucide="trending-up" class="w-5 h-5"></i> BUY
+                        </button>
+                        <button class="btn btn-red flex-1 py-3 flex items-center justify-center gap-2"
+                            onclick="placeOrder('SELL')">
+                            <i data-lucide="trending-down" class="w-5 h-5"></i> SELL
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Positions -->
+                <div class="card p-6">
+                    <h3 class="text-lg font-semibold mb-4">Positions</h3>
+                    <div id="positions-list" class="text-gray-400 text-center py-4">No open positions</div>
+                </div>
+
+                <!-- Order Book -->
+                <div class="card p-6">
+                    <h3 class="text-lg font-semibold mb-4">Order Book</h3>
+                    <div id="orders-list" class="text-gray-400 text-center py-4">No orders today</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- AI Brain Tab -->
+        <div id="tab-brain" class="tab-content hidden">
+            <div class="grid gap-6 md:grid-cols-2">
+                <!-- Analysis Input -->
+                <div class="card p-6">
+                    <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
+                        <i data-lucide="brain" class="w-5 h-5 text-purple-400"></i>
+                        AI Analysis
+                    </h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="text-xs text-gray-400 block mb-1">Symbol</label>
+                            <input type="text" class="input w-full" id="brain-symbol" value="NVDA">
+                        </div>
+                        <div>
+                            <label class="text-xs text-gray-400 block mb-1">Strategy</label>
+                            <select class="input w-full" id="brain-strategy">
+                                <option value="entry-analysis">Entry Analysis (Buy/Sell)</option>
+                                <option value="risk-assessment">Risk Assessment</option>
+                                <option value="regime-detection">Regime Detection</option>
+                                <option value="earnings-play">Earnings Play</option>
+                            </select>
+                        </div>
+                        <button class="btn bg-purple-600 w-full flex items-center justify-center gap-2"
+                            onclick="runBrainAnalysis()">
+                            <i data-lucide="zap" class="w-4 h-4"></i>
+                            Analyze
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Result -->
+                <div class="card p-6">
+                    <h3 class="text-lg font-semibold mb-4">Decision</h3>
+                    <div id="brain-result" class="text-center py-8">
+                        <p class="text-gray-400">Run analysis to see AI reasoning</p>
+                    </div>
+                </div>
+
+                <!-- Reasoning Trace -->
+                <div class="card p-6 md:col-span-2">
+                    <h3 class="text-lg font-semibold mb-4">Reasoning Trace</h3>
+                    <div id="brain-trace" class="space-y-2 text-sm">
+                        <p class="text-gray-400 text-center py-4">No analysis run yet</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- DeFi Tab (Passive Income) -->
+        <div id="tab-defi" class="tab-content hidden">
+            <div class="grid gap-6">
+                <!-- Staking Hero -->
+                <div
+                    class="bg-gradient-to-br from-purple-900/40 to-blue-900/40 rounded-2xl p-8 border border-purple-500/20">
+                    <div class="flex justify-between items-center mb-8">
+                        <div>
+                            <h2 class="text-3xl font-bold flex items-center gap-3">
+                                <i data-lucide="lock" class="text-purple-400"></i>
+                                Stake FACT Tokens
+                            </h2>
+                            <p class="text-slate-400 mt-1">Get up to 20% APR by locking your tokens. Ported from
+                                FACTRADE-solana.</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-xs text-slate-500 uppercase font-bold tracking-wider">Total TVL</p>
+                            <p id="defi-tvl" class="text-4xl font-black text-purple-400">456.7M</p>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <!-- Staking Options -->
+                        <div class="card p-6 border-purple-500/20 text-center cursor-pointer hover:bg-purple-500/10 transition-all"
+                            onclick="selectPeriod(7)">
+                            <p class="text-2xl font-bold text-white">7 Days</p>
+                            <p class="text-green-400 font-bold">5% APR</p>
+                            <p class="text-xs text-slate-500 mt-2">1x Multiplier</p>
+                        </div>
+                        <div class="card p-6 border-blue-500/20 text-center cursor-pointer bg-blue-500/10 scale-105 transition-all"
+                            onclick="selectPeriod(14)">
+                            <p class="text-2xl font-bold text-white">14 Days</p>
+                            <p class="text-green-400 font-bold">10% APR</p>
+                            <p class="text-xs text-slate-500 mt-2">1.5x Multiplier</p>
+                        </div>
+                        <div class="card p-6 border-purple-500/20 text-center cursor-pointer hover:bg-purple-500/10 transition-all"
+                            onclick="selectPeriod(30)">
+                            <p class="text-2xl font-bold text-white">30 Days</p>
+                            <p class="text-green-400 font-bold">20% APR</p>
+                            <p class="text-xs text-slate-500 mt-2">2x Multiplier</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Rewards & Actions -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="card p-6">
+                        <h3 class="text-lg font-semibold mb-6 flex items-center gap-2">
+                            <i data-lucide="coins" class="text-yellow-400"></i>
+                            Your Rewards
+                        </h3>
+                        <div class="flex justify-between items-end mb-6">
+                            <div>
+                                <p class="text-xs text-slate-400 mb-1">Pending Balance</p>
+                                <div class="flex items-end gap-2">
+                                    <p id="defi-pending" class="text-4xl font-bold text-white">0.00</p>
+                                    <p class="text-lg text-slate-500 mb-1 font-bold">FACT</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex gap-4">
+                            <button class="btn btn-green flex-1" onclick="claimRewards()">Claim Now</button>
+                            <button class="btn bg-purple-600 flex-1" onclick="compoundRewards()">Auto-Compound</button>
+                        </div>
+                    </div>
+
+                    <div class="card p-6">
+                        <h3 class="text-lg font-semibold mb-6 flex items-center gap-2">
+                            <i data-lucide="wallet" class="text-blue-400"></i>
+                            Quick Stake
+                        </h3>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="text-xs text-slate-400 block mb-1">Amount to Stake</label>
+                                <div class="relative">
+                                    <input type="number" class="input w-full" id="stake-amount" placeholder="0.00">
+                                    <span class="absolute right-4 top-2 text-slate-500 font-bold">FACT</span>
+                                </div>
+                            </div>
+                            <button class="btn btn-primary w-full py-3" onclick="stakeTokens()">Stake for <span
+                                    id="selected-period-txt">14</span> Days</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- AI Strategy Tab -->
+        <div id="tab-strategy" class="tab-content hidden">
+            <div class="card p-6">
+                <h2 class="text-xl font-bold mb-4 flex items-center gap-2">
+                    <i data-lucide="zap" class="w-6 h-6 text-yellow-400"></i>
+                    AI Strategy Builder
+                </h2>
+                <div class="space-y-4">
+                    <p class="text-slate-400">Describe your strategy idea in plain English and let AI generate the code
+                        and backtest it.</p>
+                    <textarea id="strategy-description"
+                        class="w-full bg-slate-900 border border-white/10 rounded-lg p-4 h-32"
+                        placeholder="e.g., Buy when SMA 9 crosses above SMA 21 on 5-minute chart with RSI > 40..."></textarea>
+                    <button onclick="generateStrategy()"
+                        class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold flex items-center gap-2 transition-all">
+                        <i data-lucide="cpu" class="w-4 h-4"></i>
+                        Generate & Backtest
+                    </button>
+                </div>
+            </div>
+            <div id="strategy-result" class="mt-6 hidden">
+                <div class="card p-6 border-blue-500/30">
+                    <h3 id="gen-strategy-name" class="text-lg font-semibold mb-2"></h3>
+                    <pre id="gen-strategy-code"
+                        class="bg-black/50 p-4 rounded text-xs text-blue-200 overflow-x-auto mb-4"></pre>
+                    <div id="gen-backtest-stats" class="grid grid-cols-2 md:grid-cols-4 gap-4"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Performance Tab -->
+        <div id="tab-performance" class="tab-content hidden">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                <div class="card p-4">
+                    <span class="text-sm text-slate-400">Total Return</span>
+                    <div class="text-2xl font-bold text-green-400">+4.5%</div>
+                </div>
+                <div class="card p-4">
+                    <span class="text-sm text-slate-400">Max Drawdown</span>
+                    <div class="text-2xl font-bold text-red-400">-2.1%</div>
+                </div>
+                <div class="card p-4">
+                    <span class="text-sm text-slate-400">Win Rate</span>
+                    <div class="text-2xl font-bold text-blue-400">68%</div>
+                </div>
+                <div class="card p-4">
+                    <span class="text-sm text-slate-400">Avg. Latency</span>
+                    <div class="text-2xl font-bold text-yellow-400">12ms</div>
+                </div>
+            </div>
+            <div class="card p-6 h-[400px] flex items-center justify-center border-dashed border-white/10">
+                <div class="text-center">
+                    <i data-lucide="line-chart" class="w-12 h-12 text-blue-400 mx-auto mb-4 opacity-50"></i>
+                    <p class="text-slate-500">Equity Curve Visualization (SVG Layer Loading...)</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Monitor Tab -->
+        <div id="tab-monitor" class="tab-content hidden">
+            <div class="grid gap-6">
+                <!-- Stats -->
+                <div class="grid grid-cols-5 gap-4">
+                    <div class="card p-4">
+                        <p class="text-xs text-gray-400">Avg Latency</p>
+                        <p class="text-2xl font-bold text-green-400">18.5ms</p>
+                    </div>
+                    <div class="card p-4">
+                        <p class="text-xs text-gray-400">P95 Latency</p>
+                        <p class="text-2xl font-bold text-yellow-400">45ms</p>
+                    </div>
+                    <div class="card p-4">
+                        <p class="text-xs text-gray-400">Requests/hr</p>
+                        <p class="text-2xl font-bold">542</p>
+                    </div>
+                    <div class="card p-4">
+                        <p class="text-xs text-gray-400">Success Rate</p>
+                        <p class="text-2xl font-bold text-green-400">99.8%</p>
+                    </div>
+                    <div class="card p-4">
+                        <p class="text-xs text-gray-400">Errors</p>
+                        <p class="text-2xl font-bold text-red-400">3</p>
+                    </div>
+                </div>
+
+                <!-- Services Status -->
+                <div class="card p-6">
+                    <h3 class="text-lg font-semibold mb-4">Services Status</h3>
+                    <div id="services-status" class="space-y-3"></div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // API Configuration
+        const API = {
+            BRAIN: 'http://localhost:8007',
+            SCANNER: 'http://localhost:8008',
+            ORDERS: 'http://localhost:8009',
+            DEFI: 'http://localhost:8010',
+            STRATEGY_GEN: 'http://localhost:8020'
+        };
+
+        // Initialize Lucide icons
+        lucide.createIcons();
+
+        // Tab Navigation
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
+                tab.classList.add('active');
+                document.getElementById('tab-' + tab.dataset.tab).classList.remove('hidden');
+            });
+        });
+
+        // Check API Status
+        async function checkAPIStatus() {
+            const status = document.getElementById('api-status');
+            try {
+                const res = await fetch(API.SCANNER + '/health', { mode: 'cors' });
+                if (res.ok) {
+                    status.innerHTML = '<span class="w-2 h-2 rounded-full bg-green-500"></span> Connected';
+                }
+            } catch {
+                status.innerHTML = '<span class="w-2 h-2 rounded-full bg-red-500"></span> Offline';
+            }
+        }
+
+        // Scanner Functions
+        function loadTemplate(template) {
+            const templates = {
+                'rsi_overbought': { left: 'rsi(14)', op: '>', right: '70' },
+                'rsi_oversold': { left: 'rsi(14)', op: '<', right: '30' },
+                'golden_cross': { left: 'sma(close, 50)', op: '>', right: 'sma(close, 200)' },
+                'death_cross': { left: 'sma(close, 50)', op: '<', right: 'sma(close, 200)' }
+            };
+            const t = templates[template];
+            if (t) {
+                document.getElementById('cond-left').value = t.left;
+                document.getElementById('cond-op').value = t.op;
+                document.getElementById('cond-right').value = t.right;
+            }
+        }
+
+        async function runScan() {
+            const resultsDiv = document.getElementById('scan-results');
+            resultsDiv.innerHTML = '<p class="loading">Scanning...</p>';
+
+            const payload = {
+                conditions: [{
+                    left: document.getElementById('cond-left').value,
+                    operator: document.getElementById('cond-op').value,
+                    right: document.getElementById('cond-right').value
+                }],
+                logic: 'AND'
+            };
+
+            try {
+                const res = await fetch(API.SCANNER + '/api/v1/scanner/scan', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+
+                if (data.results && data.results.length > 0) {
+                    resultsDiv.innerHTML = `
+                        <p class="text-sm text-gray-400 mb-4">${data.matches} of ${data.total_scanned} stocks matched</p>
+                        <table class="w-full text-sm">
+                            <thead>
+                                <tr class="text-left text-gray-400 border-b border-white/10">
+                                    <th class="pb-2">Symbol</th>
+                                    <th class="pb-2 text-right">Price</th>
+                                    <th class="pb-2 text-right">RSI</th>
+                                    <th class="pb-2 text-center">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${data.results.map(r => `
+                                    <tr class="border-b border-white/5">
+                                        <td class="py-2 font-medium">${r.symbol}</td>
+                                        <td class="py-2 text-right">₹${r.current_price?.toFixed(2) || '-'}</td>
+                                        <td class="py-2 text-right ${r.indicator_values?.rsi > 70 ? 'text-red-400' : r.indicator_values?.rsi < 30 ? 'text-green-400' : ''}">${r.indicator_values?.rsi?.toFixed(1) || '-'}</td>
+                                        <td class="py-2 text-center">
+                                            <button class="btn btn-green text-xs py-1 px-2 mr-1" onclick="quickBuy('${r.symbol}')">Buy</button>
+                                            <button class="btn btn-red text-xs py-1 px-2" onclick="quickSell('${r.symbol}')">Sell</button>
+                                        </td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    `;
+                } else {
+                    resultsDiv.innerHTML = '<p class="text-gray-400">No stocks matched the criteria</p>';
+                }
+            } catch (err) {
+                resultsDiv.innerHTML = '<p class="text-red-400">Error: Could not connect to Scanner API</p>';
+            }
+        }
+
+        // Order Functions
+        async function placeOrder(side) {
+            const payload = {
+                symbol: document.getElementById('order-symbol').value,
+                side: side,
+                quantity: parseInt(document.getElementById('order-qty').value),
+                order_type: document.getElementById('order-type').value,
+                product: document.getElementById('order-product').value
+            };
+
+            try {
+                const res = await fetch(API.ORDERS + '/api/v1/orders/place', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                alert(`Order ${data.status}: ${data.order_id}`);
+                refreshOrders();
+            } catch (err) {
+                alert('Error placing order');
+            }
+        }
+
+        async function refreshOrders() {
+            try {
+                const [posRes, ordRes, funRes] = await Promise.all([
+                    fetch(API.ORDERS + '/api/v1/positions'),
+                    fetch(API.ORDERS + '/api/v1/orders'),
+                    fetch(API.ORDERS + '/api/v1/funds')
+                ]);
+
+                const funds = await funRes.json();
+                document.getElementById('funds-available').textContent = '₹' + funds.available_cash?.toLocaleString();
+                document.getElementById('funds-margin').textContent = '₹' + funds.used_margin?.toLocaleString();
+
+                const positions = (await posRes.json()).positions || [];
+                if (positions.length > 0) {
+                    document.getElementById('positions-list').innerHTML = positions.map(p => `
+                        <div class="flex justify-between items-center py-2 border-b border-white/5">
+                            <span class="font-medium">${p.symbol}</span>
+                            <span>Qty: ${p.quantity}</span>
+                            <span class="${p.pnl >= 0 ? 'text-green-400' : 'text-red-400'}">₹${p.pnl?.toFixed(2)}</span>
+                        </div>
+                    `).join('');
+                }
+
+                const orders = (await ordRes.json()).orders || [];
+                document.getElementById('funds-orders').textContent = orders.filter(o => o.status === 'OPEN').length;
+            } catch { }
+        }
+
+        function quickBuy(symbol) {
+            document.getElementById('order-symbol').value = symbol;
+            document.querySelector('.tab[data-tab="orders"]').click();
+        }
+
+        function quickSell(symbol) {
+            document.getElementById('order-symbol').value = symbol;
+            document.querySelector('.tab[data-tab="orders"]').click();
+        }
+
+        // Brain Functions
+        async function runBrainAnalysis() {
+            const resultDiv = document.getElementById('brain-result');
+            const traceDiv = document.getElementById('brain-trace');
+            resultDiv.innerHTML = '<p class="loading">Analyzing...</p>';
+            traceDiv.innerHTML = '<p class="loading">Thinking...</p>';
+
+            const strategy = document.getElementById('brain-strategy').value;
+            const symbol = document.getElementById('brain-symbol').value;
+
+            const payloads = {
+                'entry-analysis': { symbol, rsi: 28, macd: 5.2, macd_signal: 4.8, volume: 50000000, avg_volume: 30000000 },
+                'risk-assessment': { account_size: 50000, risk_percent: 2, entry_price: 150, stop_loss: 145 },
+                'regime-detection': { price: 450, sma_50: 440, sma_200: 400, atr: 8 },
+                'earnings-play': { symbol, iv: 85, iv_rank: 78, expected_move: 8 }
+            };
+
+            try {
+                const res = await fetch(API.BRAIN + '/api/v1/brain/' + strategy, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payloads[strategy])
+                });
+                const data = await res.json();
+
+                const decision = data.result.decision || data.result.regime || data.result.recommended_strategy || 'N/A';
+                const color = decision === 'BUY' || decision === 'BULL' ? 'text-green-400' :
+                    decision === 'SELL' || decision === 'BEAR' ? 'text-red-400' : 'text-yellow-400';
+
+                resultDiv.innerHTML = `
+                    <p class="text-5xl font-bold ${color}">${decision}</p>
+                    ${data.result.confidence ? `<p class="text-sm text-gray-400 mt-2">${data.result.confidence} Confidence</p>` : ''}
+                    ${data.result.position_size ? `<p class="text-sm mt-2">Position: ${data.result.position_size} shares</p>` : ''}
+                `;
+
+                if (data.trace && data.trace.length > 0) {
+                    traceDiv.innerHTML = data.trace.map((t, i) => `
+                        <div class="flex items-start gap-3 p-2 rounded bg-black/20">
+                            <span class="w-6 h-6 rounded-full bg-purple-600 flex items-center justify-center text-xs font-bold flex-shrink-0">${t.thought_number}</span>
+                            <p class="text-gray-300">${t.thought}</p>
+                        </div>
+                    `).join('');
+                }
+            } catch (err) {
+                resultDiv.innerHTML = '<p class="text-red-400">Error connecting to Brain API</p>';
+            }
+        }
+
+        // Services Status
+        function updateServicesStatus() {
+            const services = [
+                { name: 'Brain Service', port: 8007, url: API.BRAIN },
+                { name: 'Scanner Service', port: 8008, url: API.SCANNER },
+                { name: 'Order Service', port: 8009, url: API.ORDERS },
+                { name: 'DeFi Service', port: 8010, url: API.DEFI }
+            ];
+
+            const container = document.getElementById('services-status');
+            container.innerHTML = services.map(s => `
+                <div class="flex items-center justify-between p-3 rounded bg-black/20" id="svc-${s.port}">
+                    <div class="flex items-center gap-3">
+                        <span class="w-2 h-2 rounded-full bg-yellow-500 status-dot"></span>
+                        <span>${s.name}</span>
+                        <span class="text-xs text-gray-400">:${s.port}</span>
+                    </div>
+                    <span class="text-xs status-text">Checking...</span>
+                </div>
+            `).join('');
+
+            services.forEach(s => {
+                fetch(s.url + '/health', { mode: 'cors' })
+                    .then(res => {
+                        const el = document.getElementById('svc-' + s.port);
+                        if (res.ok) {
+                            el.querySelector('.status-dot').className = 'w-2 h-2 rounded-full bg-green-500 status-dot';
+                            el.querySelector('.status-text').textContent = 'Healthy';
+                            el.querySelector('.status-text').className = 'text-xs text-green-400 status-text';
+                        }
+                    })
+                    .catch(() => {
+                        const el = document.getElementById('svc-' + s.port);
+                        el.querySelector('.status-dot').className = 'w-2 h-2 rounded-full bg-red-500 status-dot';
+                        el.querySelector('.status-text').textContent = 'Offline';
+                        el.querySelector('.status-text').className = 'text-xs text-red-400 status-text';
+                    });
+            });
+        }
+
+        // DeFi Functions
+        let selectedPeriodDays = 14;
+        function selectPeriod(days) {
+            selectedPeriodDays = days;
+            document.getElementById('selected-period-txt').textContent = days;
+            // Update UI styles (optional enhancement)
+        }
+
+        async function stakeTokens() {
+            const amount = document.getElementById('stake-amount').value;
+            if (!amount) return alert('Enter amount');
+
+            try {
+                const res = await fetch(API.DEFI + '/api/v1/defi/stake', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        user_id: 'user_1',
+                        amount: parseFloat(amount),
+                        lock_period: selectedPeriodDays
+                    })
+                });
+                const data = await res.json();
+                alert(`Successfully staked! ID: ${data.id}`);
+                refreshDeFi();
+            } catch (err) { alert('Error staking tokens'); }
+        }
+
+        async function claimRewards() {
+            try {
+                const res = await fetch(API.DEFI + '/api/v1/defi/claim', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_id: 'user_1' })
+                });
+                const data = await res.json();
+                alert(`Claimed ${data.amount_claimed.toFixed(2)} FACT!`);
+                refreshDeFi();
+            } catch (err) { alert('Error claiming rewards'); }
+        }
+
+        async function refreshDeFi() {
+            try {
+                const [statsRes, rewardsRes] = await Promise.all([
+                    fetch(API.DEFI + '/api/v1/defi/stats'),
+                    fetch(API.DEFI + '/api/v1/defi/rewards/user_1')
+                ]);
+                const stats = await statsRes.json();
+                const rewards = await rewardsRes.json();
+
+                document.getElementById('defi-tvl').textContent = (stats.total_value_locked / 1000000).toFixed(1) + 'M';
+                document.getElementById('defi-pending').textContent = rewards.pending_rewards.toFixed(2);
+            } catch { }
+        }
+
+        // AI Strategy Functions
+        async function generateStrategy() {
+            const description = document.getElementById('strategy-description').value;
+            if (!description) return alert('Enter description');
+
+            const resultDiv = document.getElementById('strategy-result');
+            resultDiv.classList.remove('hidden');
+            document.getElementById('gen-strategy-name').innerHTML = '<span class="loading">Generating AI Strategy...</span>';
+            document.getElementById('gen-strategy-code').textContent = '';
+            document.getElementById('gen-backtest-stats').innerHTML = '';
+
+            try {
+                const res = await fetch(API.STRATEGY_GEN + '/api/v1/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ description, symbol: 'AAPL' })
+                });
+                const data = await res.json();
+
+                document.getElementById('gen-strategy-name').textContent = data.strategy_name;
+                document.getElementById('gen-strategy-code').textContent = data.code.trim();
+
+                const stats = data.backtest_results;
+                document.getElementById('gen-backtest-stats').innerHTML = `
+                    <div class="p-3 bg-white/5 rounded">
+                        <span class="text-xs text-slate-400">Total Return</span>
+                        <div class="font-bold text-green-400">${stats.total_return_pct}%</div>
+                    </div>
+                    <div class="p-3 bg-white/5 rounded">
+                        <span class="text-xs text-slate-400">Sharpe Ratio</span>
+                        <div class="font-bold text-blue-400">${stats.sharpe_ratio}</div>
+                    </div>
+                    <div class="p-3 bg-white/5 rounded">
+                        <span class="text-xs text-slate-400">Drawdown</span>
+                        <div class="font-bold text-red-400">-2.1%</div>
+                    </div>
+                    <div class="p-3 bg-white/5 rounded text-center">
+                        <button class="bg-indigo-600 px-2 py-1 rounded text-[10px]" onclick="quickBuy('AAPL')">Go Live</button>
+                    </div>
+                `;
+            } catch (err) {
+                alert('Generation failed. Ensure StrategyGen service is running.');
+            }
+        }
+
+        // Initialize
+        checkAPIStatus();
+        updateServicesStatus();
+        refreshDeFi();
+        setInterval(checkAPIStatus, 30000);
+        setInterval(refreshDeFi, 10000); // Fast rewards update
+    </script>
+</body>
+
+</html>

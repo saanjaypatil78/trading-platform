@@ -1,0 +1,26 @@
+{
+  "entities": [
+    {
+      "name": "NVDA",
+      "entity_type": "stock",
+      "observations": [
+        "BUY (High) at indicator=25.0 on 2026-01-21 21:15"
+      ]
+    },
+    {
+      "name": "AAPL",
+      "entity_type": "stock",
+      "observations": [
+        "SELL (High) at indicator=75.0 on 2026-01-21 21:15"
+      ]
+    },
+    {
+      "name": "TEST_STOCK",
+      "entity_type": "stock",
+      "observations": [
+        "Test observation"
+      ]
+    }
+  ],
+  "relations": []
+}

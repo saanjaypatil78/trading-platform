@@ -1,0 +1,154 @@
+{
+    "predefined_scans": [
+        {
+            "id": "rsi_oversold",
+            "name": "RSI Oversold (< 30)",
+            "description": "Stocks with RSI below 30, potentially oversold",
+            "category": "Momentum",
+            "criteria": "RSI(14) < 30"
+        },
+        {
+            "id": "rsi_overbought",
+            "name": "RSI Overbought (> 70)",
+            "description": "Stocks with RSI above 70, potentially overbought",
+            "category": "Momentum",
+            "criteria": "RSI(14) > 70"
+        },
+        {
+            "id": "golden_cross",
+            "name": "Golden Cross",
+            "description": "50-day SMA crosses above 200-day SMA (bullish)",
+            "category": "Trend",
+            "criteria": "SMA(Close, 50) > SMA(Close, 200) and SMA(Close, 50)[1] <= SMA(Close, 200)[1]"
+        },
+        {
+            "id": "death_cross",
+            "name": "Death Cross",
+            "description": "50-day SMA crosses below 200-day SMA (bearish)",
+            "category": "Trend",
+            "criteria": "SMA(Close, 50) < SMA(Close, 200) and SMA(Close, 50)[1] >= SMA(Close, 200)[1]"
+        },
+        {
+            "id": "macd_bullish",
+            "name": "MACD Bullish Crossover",
+            "description": "MACD crosses above signal line",
+            "category": "Momentum",
+            "criteria": "MACD() > MACD_Signal() and MACD()[1] <= MACD_Signal()[1]"
+        },
+        {
+            "id": "macd_bearish",
+            "name": "MACD Bearish Crossover",
+            "description": "MACD crosses below signal line",
+            "category": "Momentum",
+            "criteria": "MACD() < MACD_Signal() and MACD()[1] >= MACD_Signal()[1]"
+        },
+        {
+            "id": "breakout_52w_high",
+            "name": "52-Week High Breakout",
+            "description": "Price breaks above 52-week high",
+            "category": "Breakout",
+            "criteria": "Close > High[252] and Close[1] <= High[252]"
+        },
+        {
+            "id": "volume_surge",
+            "name": "Volume Surge",
+            "description": "Volume is 2x the 20-day average",
+            "category": "Volume",
+            "criteria": "Volume > SMA(Volume, 20) * 2"
+        },
+        {
+            "id": "bollinger_squeeze",
+            "name": "Bollinger Band Squeeze",
+            "description": "Low volatility, bands are narrow",
+            "category": "Volatility",
+            "criteria": "(BB_Upper(Close, 20, 2) - BB_Lower(Close, 20, 2)) / BB_Middle(Close, 20, 2) < 0.1"
+        },
+        {
+            "id": "bollinger_breakout_up",
+            "name": "Bollinger Upper Band Breakout",
+            "description": "Price breaks above upper Bollinger Band",
+            "category": "Breakout",
+            "criteria": "Close > BB_Upper(Close, 20, 2)"
+        },
+        {
+            "id": "bollinger_breakout_down",
+            "name": "Bollinger Lower Band Breakout",
+            "description": "Price breaks below lower Bollinger Band",
+            "category": "Breakout",
+            "criteria": "Close < BB_Lower(Close, 20, 2)"
+        },
+        {
+            "id": "price_above_sma",
+            "name": "Price Above 20 SMA",
+            "description": "Price is above 20-day simple moving average",
+            "category": "Trend",
+            "criteria": "Close > SMA(Close, 20)"
+        },
+        {
+            "id": "strong_uptrend",
+            "name": "Strong Uptrend",
+            "description": "Price above 20, 50, and 200 day SMAs",
+            "category": "Trend",
+            "criteria": "Close > SMA(Close, 20) and Close > SMA(Close, 50) and Close > SMA(Close, 200)"
+        },
+        {
+            "id": "gap_up",
+            "name": "Gap Up (>2%)",
+            "description": "Today's open is >2% above yesterday's close",
+            "category": "Gap",
+            "criteria": "(Open - Close[1]) / Close[1] * 100 > 2"
+        },
+        {
+            "id": "gap_down",
+            "name": "Gap Down (>2%)",
+            "description": "Today's open is >2% below yesterday's close",
+            "category": "Gap",
+            "criteria": "(Open - Close[1]) / Close[1] * 100 < -2"
+        },
+        {
+            "id": "bullish_reversal",
+            "name": "Bullish Reversal Setup",
+            "description": "RSI oversold with bullish MACD",
+            "category": "Reversal",
+            "criteria": "RSI(14) < 35 and MACD() > MACD_Signal()"
+        },
+        {
+            "id": "bearish_reversal",
+            "name": "Bearish Reversal Setup",
+            "description": "RSI overbought with bearish MACD",
+            "category": "Reversal",
+            "criteria": "RSI(14) > 65 and MACD() < MACD_Signal()"
+        },
+        {
+            "id": "high_momentum",
+            "name": "High Momentum",
+            "description": "Strong price increase with volume confirmation",
+            "category": "Momentum",
+            "criteria": "(Close - Close[5]) / Close[5] * 100 > 5 and Volume > SMA(Volume, 20) * 1.5"
+        },
+        {
+            "id": "consolidation",
+            "name": "Price Consolidation",
+            "description": "Low volatility, narrow trading range",
+            "category": "Consolidation",
+            "criteria": "ATR(14) / Close < 0.02"
+        },
+        {
+            "id": "strong_buying",
+            "name": "Strong Buying Pressure",
+            "description": "Price up with heavy volume and positive MFI",
+            "category": "Volume",
+            "criteria": "(Close - Open) / Open * 100 > 2 and Volume > SMA(Volume, 20) * 1.5 and MFI(14) > 50"
+        }
+    ],
+    "categories": [
+        "Momentum",
+        "Trend",
+        "Breakout",
+        "Volume",
+        "Volatility",
+        "Gap",
+        "Reversal",
+        "Consolidation"
+    ]
+}

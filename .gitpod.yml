@@ -1,0 +1,29 @@
+# Gitpod Configuration
+# Auto-starts all services when opening in Gitpod
+
+image: python:3.11
+
+tasks:
+  - name: Install Dependencies
+    init: pip install fastapi uvicorn pydantic httpx aiohttp
+    command: python launcher.py
+
+ports:
+  - port: 8000
+    visibility: public
+    name: Frontend
+    onOpen: open-preview
+  - port: 8007
+    visibility: public
+    name: Brain API
+  - port: 8008
+    visibility: public
+    name: Scanner API
+  - port: 8009
+    visibility: public
+    name: Orders API
+
+vscode:
+  extensions:
+    - ms-python.python
+    - ms-python.vscode-pylance

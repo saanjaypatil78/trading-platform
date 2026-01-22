@@ -1,0 +1,30 @@
+{
+  "name": "Trading Platform Dev Container",
+  "image": "mcr.microsoft.com/devcontainers/python:3.11",
+  "postCreateCommand": "pip install fastapi uvicorn pydantic httpx aiohttp",
+  "forwardPorts": [
+    8000,
+    8007,
+    8008,
+    8009
+  ],
+  "portsAttributes": {
+    "8000": {
+      "label": "Frontend",
+      "onAutoForward": "openPreview"
+    },
+    "8007": {
+      "label": "Brain API"
+    },
+    "8008": {
+      "label": "Scanner API"
+    },
+    "8009": {
+      "label": "Orders API"
+    }
+  },
+  "remoteEnv": {
+    "PYTHONPATH": "${containerWorkspaceFolder}"
+  },
+  "postStartCommand": "python launcher.py"
+}
