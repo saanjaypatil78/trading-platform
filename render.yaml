@@ -1,0 +1,72 @@
+services:
+  # 1. Aggregator Service (Unified Signals)
+  - type: web
+    name: trading-aggregator
+    env: docker
+    dockerContext: .
+    dockerfilePath: backend/services/aggregator/Dockerfile
+    region: singapore
+    plan: free
+    branch: main
+    numInstances: 1
+    envVars:
+      - key: PORT
+        value: 8011
+      - key: ORDERFLOW_SERVICE_URL
+        fromService:
+          type: web
+          name: trading-orderflow
+          property: host
+      - key: BROKER_SERVICE_URL
+        fromService:
+          type: web
+          name: trading-broker
+          property: host
+      - key: Z_AI_API_KEY
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+
+  # 2. Orderflow Service (L2 Data)
+  - type: web
+    name: trading-orderflow
+    env: docker
+    dockerContext: .
+    dockerfilePath: backend/services/orderflow/Dockerfile
+    region: singapore
+    plan: free
+    branch: main
+    numInstances: 1
+    envVars:
+      - key: PORT
+        value: 8008
+      - key: MASSIVE_API_KEY
+        sync: false
+      - key: ALPACA_API_KEY
+        sync: false
+      - key: ALPACA_API_SECRET
+        sync: false
+
+  # 3. Broker Service (Execution)
+  - type: web
+    name: trading-broker
+    env: docker
+    dockerContext: .
+    dockerfilePath: backend/services/broker/Dockerfile
+    region: singapore
+    plan: free
+    branch: main
+    numInstances: 1
+    envVars:
+      - key: PORT
+        value: 8000
+      - key: ZERODHA_API_KEY
+        sync: false
+
+databases:
+  - name: trading-db
+    plan: free
+    region: singapore
+    user: trading_user

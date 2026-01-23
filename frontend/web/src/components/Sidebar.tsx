@@ -12,7 +12,9 @@ import {
     Wallet,
     Webhook,
     Settings,
-    Menu
+    Menu,
+    Target,
+    BarChart3
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from './ui/button';
@@ -20,6 +22,8 @@ import { TokenBalance } from './TokenBalance';
 
 const navItems = [
     { name: 'Dashboard', href: '/', icon: LayoutDashboard },
+    { name: 'Signals', href: '/signals', icon: Target },
+    { name: 'Orderflow', href: '/orderflow', icon: BarChart3 },
     { name: 'Scanner', href: '/scanner', icon: Search },
     { name: 'Orders', href: '/orders', icon: ShoppingCart },
     { name: 'AI Brain', href: '/brain', icon: BrainCircuit },

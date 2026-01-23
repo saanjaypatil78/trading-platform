@@ -197,6 +197,96 @@ async def webhook_handler(signal: WebhookSignal):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
+# ============================================================================
+# Confirmation Mesh Integration
+# ============================================================================
+class ConfirmedExecuteRequest(BaseModel):
+    """Execute order only after confirmation mesh validation"""
+    symbol: str
+    side: str  # "BUY" or "SELL"
+    quantity: int
+    signal_type: str = "manual"  # absorption, exhaustion, imbalance, sweep, manual
+    confidence: str = "medium"  # low, medium, high
+    max_slippage_pct: float = 0.5
+    orderflow_service_url: str = "http://localhost:8008"
+
+@app.post("/api/v1/orders/execute-confirmed")
+async def execute_confirmed(request: ConfirmedExecuteRequest):
+    """
+    Execute order only after validation through confirmation mesh.
+    Integrates with orderflow service for L2 liquidity and footprint checks.
+    """
+    import httpx
+    
+    try:
+        # Step 1: Validate through confirmation mesh
+        async with httpx.AsyncClient() as client:
+            validation_response = await client.post(
+                f"{request.orderflow_service_url}/validate",
+                json={
+                    "symbol": request.symbol,
+                    "side": request.side.lower(),
+                    "quantity": request.quantity,
+                    "signal_type": request.signal_type,
+                    "confidence": request.confidence,
+                    "max_slippage_pct": request.max_slippage_pct
+                },
+                timeout=10.0
+            )
+        
+        if validation_response.status_code != 200:
+            return {
+                "status": "validation_error",
+                "detail": "Failed to reach orderflow service",
+                "executed": False
+            }
+        
+        validation = validation_response.json()
+        
+        # Step 2: Check approval
+        if not validation.get("approved", False):
+            return {
+                "status": "rejected",
+                "reason": validation.get("rejection_reason", "Unknown"),
+                "executed": False,
+                "validation_details": {
+                    "liquidity_check": validation.get("liquidity_check"),
+                    "footprint_confirmed": validation.get("footprint_confirmed"),
+                    "risk_check": validation.get("risk_check")
+                }
+            }
+        
+        # Step 3: Execute order (use recommended quantity if available)
+        exec_quantity = validation.get("recommended_quantity") or request.quantity
+        
+        order = broker.place_order(
+            symbol=request.symbol,
+            side=OrderSide(request.side.upper()),
+            quantity=int(exec_quantity),
+            order_type=OrderType.MARKET,
+            product=ProductType.MIS
+        )
+        
+        return {
+            "status": "executed",
+            "executed": True,
+            "order_id": order.order_id,
+            "order_status": order.status.value,
+            "filled_quantity": exec_quantity,
+            "validation_approved": True,
+            "recommended_price": validation.get("recommended_price")
+        }
+        
+    except httpx.TimeoutException:
+        return {
+            "status": "timeout",
+            "detail": "Orderflow service validation timed out",
+            "executed": False
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8009)

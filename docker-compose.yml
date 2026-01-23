@@ -203,6 +203,59 @@ services:
       retries: 3
     restart: unless-stopped
 
+  # Orderflow Service (L2 Data + Footprint Detection)
+  orderflow-service:
+    build:
+      context: ./backend
+      dockerfile: services/orderflow/Dockerfile
+    container_name: trading-platform-orderflow
+    environment:
+      - ALPACA_API_KEY=${ALPACA_API_KEY:-}
+      - ALPACA_API_SECRET=${ALPACA_API_SECRET:-}
+      - MASSIVE_API_KEY=${MASSIVE_API_KEY:-}
+      - REDIS_URL=${REDIS_URL}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+    ports:
+      - "8008:8008"
+    depends_on:
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./backend/services/orderflow:/app/backend/services/orderflow
+      - ./backend/shared:/app/backend/shared
+    networks:
+      - trading-network
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8008/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+  # Signal Aggregation Service
+  aggregator-service:
+    build:
+      context: ./backend
+      dockerfile: services/aggregator/Dockerfile
+    container_name: trading-platform-aggregator
+    environment:
+      - ORDERFLOW_SERVICE_URL=http://orderflow-service:8008
+      - SCANNER_SERVICE_URL=http://scanner-service:8000
+      - BRAIN_SERVICE_URL=http://brain-service:8000
+      - BROKER_SERVICE_URL=http://broker-service:8000
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+    ports:
+      - "8011:8011"
+    depends_on:
+      - orderflow-service
+      - scanner-service
+      - brain-service
+    volumes:
+      - ./backend/services/aggregator:/app/backend/services/aggregator
+    networks:
+      - trading-network
+    restart: unless-stopped
+
   # Celery Worker (for async tasks)
   celery-worker:
     build:

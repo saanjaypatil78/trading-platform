@@ -1,0 +1,264 @@
+{
+    "name": "Trade Confirmation Workflow",
+    "nodes": [
+        {
+            "parameters": {
+                "httpMethod": "POST",
+                "path": "trade-signal",
+                "responseMode": "responseNode"
+            },
+            "id": "webhook-trigger",
+            "name": "Webhook - Trade Signal",
+            "type": "n8n-nodes-base.webhook",
+            "typeVersion": 1,
+            "position": [
+                250,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "={{$env.ORDERFLOW_SERVICE_URL}}/validate",
+                "sendBody": true,
+                "specifyBody": "json",
+                "jsonBody": "={{ JSON.stringify($json.body) }}"
+            },
+            "id": "validate-signal",
+            "name": "Validate via Confirmation Mesh",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4,
+            "position": [
+                470,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "boolean": [
+                        {
+                            "value1": "={{ $json.approved }}",
+                            "value2": true
+                        }
+                    ]
+                }
+            },
+            "id": "check-approval",
+            "name": "Is Approved?",
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 1,
+            "position": [
+                690,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "={{$env.BROKER_SERVICE_URL}}/execute",
+                "sendBody": true,
+                "specifyBody": "json",
+                "jsonBody": "={{ JSON.stringify({ symbol: $('Webhook - Trade Signal').item.json.body.symbol, side: $('Webhook - Trade Signal').item.json.body.side, quantity: $('Validate via Confirmation Mesh').item.json.recommended_quantity || $('Webhook - Trade Signal').item.json.body.quantity, order_type: 'limit', limit_price: $('Validate via Confirmation Mesh').item.json.recommended_price }) }}"
+            },
+            "id": "execute-trade",
+            "name": "Execute Trade",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4,
+            "position": [
+                910,
+                200
+            ]
+        },
+        {
+            "parameters": {
+                "channel": "#trading-alerts",
+                "text": ":white_check_mark: Trade Executed!\nSymbol: {{ $('Webhook - Trade Signal').item.json.body.symbol }}\nSide: {{ $('Webhook - Trade Signal').item.json.body.side }}\nQuantity: {{ $json.filled_quantity }}\nPrice: {{ $json.avg_price }}",
+                "attachments": []
+            },
+            "id": "notify-success",
+            "name": "Notify Success",
+            "type": "n8n-nodes-base.slack",
+            "typeVersion": 2,
+            "position": [
+                1130,
+                200
+            ],
+            "credentials": {
+                "slackApi": {
+                    "id": "{{$env.SLACK_CREDENTIAL_ID}}",
+                    "name": "Slack"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "channel": "#trading-alerts",
+                "text": ":x: Trade Rejected!\nSymbol: {{ $('Webhook - Trade Signal').item.json.body.symbol }}\nReason: {{ $('Validate via Confirmation Mesh').item.json.rejection_reason }}",
+                "attachments": []
+            },
+            "id": "notify-rejection",
+            "name": "Notify Rejection",
+            "type": "n8n-nodes-base.slack",
+            "typeVersion": 2,
+            "position": [
+                910,
+                400
+            ],
+            "credentials": {
+                "slackApi": {
+                    "id": "{{$env.SLACK_CREDENTIAL_ID}}",
+                    "name": "Slack"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "table": "trade_logs",
+                "columns": "symbol,side,quantity,status,reason,timestamp",
+                "values": "={{ $('Webhook - Trade Signal').item.json.body.symbol }},={{ $('Webhook - Trade Signal').item.json.body.side }},={{ $('Webhook - Trade Signal').item.json.body.quantity }},rejected,={{ $('Validate via Confirmation Mesh').item.json.rejection_reason }},={{ new Date().toISOString() }}"
+            },
+            "id": "log-rejection",
+            "name": "Log Rejection",
+            "type": "n8n-nodes-base.postgres",
+            "typeVersion": 2,
+            "position": [
+                1130,
+                400
+            ],
+            "credentials": {
+                "postgres": {
+                    "id": "{{$env.POSTGRES_CREDENTIAL_ID}}",
+                    "name": "PostgreSQL"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "respondWith": "json",
+                "responseBody": "={{ JSON.stringify({ status: 'executed', order_id: $json.order_id }) }}"
+            },
+            "id": "respond-success",
+            "name": "Respond Success",
+            "type": "n8n-nodes-base.respondToWebhook",
+            "typeVersion": 1,
+            "position": [
+                1350,
+                200
+            ]
+        },
+        {
+            "parameters": {
+                "respondWith": "json",
+                "responseBody": "={{ JSON.stringify({ status: 'rejected', reason: $('Validate via Confirmation Mesh').item.json.rejection_reason }) }}",
+                "options": {
+                    "responseCode": 400
+                }
+            },
+            "id": "respond-rejection",
+            "name": "Respond Rejection",
+            "type": "n8n-nodes-base.respondToWebhook",
+            "typeVersion": 1,
+            "position": [
+                1350,
+                400
+            ]
+        }
+    ],
+    "connections": {
+        "Webhook - Trade Signal": {
+            "main": [
+                [
+                    {
+                        "node": "Validate via Confirmation Mesh",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Validate via Confirmation Mesh": {
+            "main": [
+                [
+                    {
+                        "node": "Is Approved?",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Is Approved?": {
+            "main": [
+                [
+                    {
+                        "node": "Execute Trade",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Notify Rejection",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Execute Trade": {
+            "main": [
+                [
+                    {
+                        "node": "Notify Success",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Notify Success": {
+            "main": [
+                [
+                    {
+                        "node": "Respond Success",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Notify Rejection": {
+            "main": [
+                [
+                    {
+                        "node": "Log Rejection",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Log Rejection": {
+            "main": [
+                [
+                    {
+                        "node": "Respond Rejection",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    },
+    "settings": {
+        "executionOrder": "v1"
+    },
+    "staticData": null,
+    "tags": [
+        "trading",
+        "automation",
+        "orderflow"
+    ],
+    "triggerCount": 0
+}

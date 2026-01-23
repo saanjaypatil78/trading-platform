@@ -54,6 +54,7 @@ build/
 *.key
 *.pem
 secrets/
+.antigravity/
 
 # Logs
 logs/
