@@ -1,12 +1,10 @@
 
 /**
  * Smart API Client with Failover Strategy
- * Primary: AWS EC2 (VITE_AWS_API_URL)
- * Fallback: Render.com (VITE_RENDER_API_URL)
+ * Primary: Unified API base (NEXT_PUBLIC_API_URL)
  */
 
 const AWS_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-const RENDER_URL = process.env.NEXT_PUBLIC_RENDER_API_URL || '';
 
 let currentBaseUrl = AWS_URL;
 
@@ -34,13 +32,6 @@ export async function fetchWithFailover(endpoint: string, options: RequestInit =
     } catch (err) {
         console.warn(`[API] Primary (${currentBaseUrl}) failed. Checking fallback...`, err);
 
-        if (currentBaseUrl === AWS_URL && RENDER_URL) {
-            console.log(`[API] Switching to Fallback: ${RENDER_URL}`);
-            currentBaseUrl = RENDER_URL; // Permanent switch for this session
-            const fallbackUrl = `${currentBaseUrl}${endpoint}`;
-            return fetch(fallbackUrl, options);
-        }
-
         throw err;
     }
 }
@@ -63,9 +54,9 @@ export const brainEndpoints = {
  * Market Data Service Endpoints
  */
 export const marketEndpoints = {
-    quote: (symbol: string) => `/api/v1/market/quote/${symbol}`,
-    ohlcv: (symbol: string) => `/api/v1/market/ohlcv/${symbol}`,
-    health: '/api/v1/market/health'
+    quote: (symbol: string) => `/api/v1/quote/${symbol}`,
+    ohlcv: (symbol: string) => `/api/v1/ohlcv/${symbol}`,
+    health: '/health'
 } as const;
 
 /**
@@ -101,4 +92,3 @@ export async function callBrainAPI<T>(
 
     return res.json();
 }
-

@@ -18,18 +18,18 @@ class Settings(BaseSettings):
     API_PREFIX: str = "/api/v1"
     
     # Database
-    DATABASE_URL: str
+    DATABASE_URL: str = "sqlite:///./trading_platform.db"
     DB_ECHO: bool = False
     
     # Redis
-    REDIS_URL: str
+    REDIS_URL: str = "redis://localhost:6379/0"
     REDIS_CACHE_TTL: int = 300  # 5 minutes default
     
     # RabbitMQ
     RABBITMQ_URL: Optional[str] = None
     
     # JWT
-    JWT_SECRET_KEY: str
+    JWT_SECRET_KEY: str = "change-me"
     JWT_ALGORITHM: str = "HS256"
     JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
     JWT_REFRESH_TOKEN_EXPIRE_DAYS: int = 7
@@ -82,7 +82,11 @@ class Settings(BaseSettings):
     PAPER_TRADING_SLIPPAGE_PERCENT: float = 0.1
     
     # CORS
-    CORS_ORIGINS: list = ["http://localhost:3000", "http://localhost:8000"]
+    CORS_ORIGINS: list = [
+        "http://localhost:3000",
+        "http://localhost:8000",
+        "https://*.vercel.app"
+    ]
     
     # Logging
     LOG_LEVEL: str = "INFO"

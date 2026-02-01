@@ -9,6 +9,11 @@ from backend.services.brain.main import app as brain_app
 from backend.services.scanner.main import app as scanner_app
 from backend.services.broker.main import app as broker_app
 from backend.services.market_data.main import app as market_data_app
+from backend.services.websocket.main import app as websocket_app
+from backend.services.orderflow.main import app as orderflow_app
+from backend.services.aggregator.main import app as aggregator_app
+from backend.services.strategy_gen.main import app as strategy_gen_app
+from backend.services.defi.main import app as defi_app
 # from backend.services.defi.main import app as defi_app # Optional if high memory
 
 # Create Unified App
@@ -40,7 +45,12 @@ app.add_middleware(
 app.mount("/api/v1/brain", brain_app)
 app.mount("/api/v1/scanner", scanner_app)
 app.mount("/api/v1/orders", broker_app)
-app.mount("/api/v1/market-data", market_data_app)
+app.mount("/api/v1/market", market_data_app)
+app.mount("/ws", websocket_app)
+app.mount("/api/v1/orderflow", orderflow_app)
+app.mount("/api/v1/signals", aggregator_app)
+app.mount("/api/v1/strategy-gen", strategy_gen_app)
+app.mount("/api/v1/defi", defi_app)
 
 from backend.services.auth.router import router as auth_router
 app.include_router(auth_router, prefix="/auth")

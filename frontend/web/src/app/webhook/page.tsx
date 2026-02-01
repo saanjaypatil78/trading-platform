@@ -7,7 +7,11 @@ import { Badge } from '@/components/ui/badge';
 import { Webhook, Play, CheckCircle, AlertTriangle, Link as LinkIcon } from 'lucide-react';
 
 export default function WebhookPage() {
-    const [webhookUrl, setWebhookUrl] = useState('https://trading-platform-backend.onrender.com/api/v1/webhook/tradingview');
+    const [webhookUrl, setWebhookUrl] = useState(
+        process.env.NEXT_PUBLIC_API_URL
+            ? `${process.env.NEXT_PUBLIC_API_URL}/api/v1/webhook`
+            : 'https://your-backend-host/api/v1/webhook'
+    );
 
     return (
         <div className="space-y-6">

@@ -115,18 +115,18 @@ async def startup():
     
     # Connect to Redis cache
     await cache.connect()
-    
-    # Initialize Redis Pub/Sub subscriber
-    redis_subscriber = RedisSubscriber(broadcast_callback=handle_redis_message)
-    await redis_subscriber.connect()
+    if cache.redis_client:
+        # Initialize Redis Pub/Sub subscriber
+        redis_subscriber = RedisSubscriber(broadcast_callback=handle_redis_message)
+        await redis_subscriber.connect()
     
     # Subscribe to relevant channels
-    await redis_subscriber.subscribe_to_pattern("market_data:*")
-    await redis_subscriber.subscribe_to_pattern("scanner:*")
-    await redis_subscriber.subscribe_to_channel("system:notifications")
+        await redis_subscriber.subscribe_to_pattern("market_data:*")
+        await redis_subscriber.subscribe_to_pattern("scanner:*")
+        await redis_subscriber.subscribe_to_channel("system:notifications")
     
     # Start listening to Redis
-    redis_subscriber.start_listening()
+        redis_subscriber.start_listening()
     
     # Start heartbeat loop
     heartbeat_task = asyncio.create_task(heartbeat_loop())

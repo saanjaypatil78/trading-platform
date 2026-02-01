@@ -13,11 +13,18 @@ class RedisCache:
     
     async def connect(self):
         """Connect to Redis"""
-        self.redis_client = await redis.from_url(
-            settings.REDIS_URL,
-            encoding="utf-8",
-            decode_responses=False
-        )
+        if not settings.REDIS_URL:
+            return
+
+        try:
+            self.redis_client = await redis.from_url(
+                settings.REDIS_URL,
+                encoding="utf-8",
+                decode_responses=False
+            )
+        except Exception as e:
+            print(f"Cache connect error: {e}")
+            self.redis_client = None
     
     async def disconnect(self):
         """Disconnect from Redis"""

@@ -7,10 +7,6 @@
     "outputDirectory": ".next",
     "rewrites": [
         {
-            "source": "/api/v1/brain/:path*",
-            "destination": "https://api.trading-platform.example.com/api/v1/brain/:path*"
-        },
-        {
             "source": "/api/v1/:path*",
             "destination": "https://api.trading-platform.example.com/api/v1/:path*"
         }

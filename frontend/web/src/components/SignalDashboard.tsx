@@ -21,7 +21,9 @@ interface SignalDashboardProps {
 
 export default function SignalDashboard({
     symbols = ["AAPL", "MSFT", "GOOGL", "AMZN", "TSLA"],
-    aggregatorUrl = "http://localhost:8011",
+    aggregatorUrl = process.env.NEXT_PUBLIC_API_URL
+        ? `${process.env.NEXT_PUBLIC_API_URL}/api/v1/signals`
+        : "http://localhost:8000/api/v1/signals",
 }: SignalDashboardProps) {
     const [signals, setSignals] = useState<UnifiedSignal[]>([]);
     const [loading, setLoading] = useState(false);

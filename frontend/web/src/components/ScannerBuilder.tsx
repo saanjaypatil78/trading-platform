@@ -6,7 +6,7 @@ import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Plus, Trash2, Play, Save, Search, TrendingUp, TrendingDown, Activity } from 'lucide-react';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8008';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 // Available indicators for the builder
 const INDICATORS = [
