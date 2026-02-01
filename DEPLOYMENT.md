@@ -13,6 +13,15 @@
 ## 2. Deployment Architecture (Production)
 You want to deploy to **Vercel**. Here is the reality check for a Trading Platform:
 
+### Fitola (New Repo) -> **Vercel Auto-Deploy**
+*   **Goal**: Fitola should auto-deploy via Vercel’s Git integration, using the same organization/team that already hosts Factradr-solana.
+*   **Repo Setup**:
+    1. Create the new `fitola` repository in the same GitHub org/user.
+    2. In Vercel, click **Add New Project** → import `fitola`.
+    3. Confirm the Vercel **Team/Scope** matches the existing Factradr-solana project.
+    4. Set the root directory to match your Next.js app (if `fitola` mirrors this repo, use `frontend/web`).
+*   **Auto-Deploy**: Keep Vercel Git integration enabled; no GitHub Actions deploy job is required.
+
 ### Frontend (Next.js) -> **Vercel (Recommended)**
 *   **Why**: Vercel is built for Next.js. It handles the UI, static pages, and standard API routes perfectly.
 *   **How**: Connect your GitHub repo to Vercel, point it to the `frontend/web` directory, and let Vercel auto-deploy on every `main` push. This repo prefers Vercel’s built-in Git integration over GitHub Actions-managed deployments.
