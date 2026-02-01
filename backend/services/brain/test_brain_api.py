@@ -15,6 +15,13 @@ def test_health():
     response = client.get("/health")
     assert response.status_code == 200
     assert response.json()["status"] == "healthy"
+    assert response.json()["model"]["model"] == "glm-4.7"
+
+def test_model_endpoint():
+    response = client.get("/model")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["model"] == "glm-4.7"
 
 def test_entry_analysis_buy():
     payload = {
@@ -25,7 +32,7 @@ def test_entry_analysis_buy():
         "volume": 50000000,
         "avg_volume": 30000000  # High volume
     }
-    response = client.post("/api/v1/brain/entry-analysis", json=payload)
+    response = client.post("/entry-analysis", json=payload)
     assert response.status_code == 200
     data = response.json()
     assert data["result"]["decision"] == "BUY"
@@ -41,7 +48,7 @@ def test_entry_analysis_sell():
         "volume": 100000000,
         "avg_volume": 50000000
     }
-    response = client.post("/api/v1/brain/entry-analysis", json=payload)
+    response = client.post("/entry-analysis", json=payload)
     assert response.status_code == 200
     data = response.json()
     assert data["result"]["decision"] == "SELL"
@@ -53,7 +60,7 @@ def test_risk_assessment():
         "entry_price": 200,
         "stop_loss": 190
     }
-    response = client.post("/api/v1/brain/risk-assessment", json=payload)
+    response = client.post("/risk-assessment", json=payload)
     assert response.status_code == 200
     data = response.json()
     # Risk = 2000, Per share risk = 10 -> Position = 200 shares
@@ -67,7 +74,7 @@ def test_regime_detection_bull():
         "sma_200": 400,
         "atr": 5
     }
-    response = client.post("/api/v1/brain/regime-detection", json=payload)
+    response = client.post("/regime-detection", json=payload)
     assert response.status_code == 200
     data = response.json()
     assert data["result"]["regime"] == "BULL"
@@ -77,7 +84,7 @@ def test_portfolio_rebalance():
         "holdings": {"AAPL": 30000, "GOOGL": 10000, "MSFT": 10000},
         "targets": {"AAPL": 33, "GOOGL": 33, "MSFT": 34}
     }
-    response = client.post("/api/v1/brain/portfolio-rebalance", json=payload)
+    response = client.post("/portfolio-rebalance", json=payload)
     assert response.status_code == 200
     data = response.json()
     # GOOGL is underweight (20% vs 33%), should recommend BUY
@@ -90,18 +97,18 @@ def test_earnings_play():
         "iv_rank": 80,
         "expected_move": 10
     }
-    response = client.post("/api/v1/brain/earnings-play", json=payload)
+    response = client.post("/earnings-play", json=payload)
     assert response.status_code == 200
     data = response.json()
     assert data["result"]["recommended_strategy"] == "SELL PREMIUM"
 
 def test_memory_flow():
     # Learn something
-    response = client.post("/api/v1/brain/memory/learn?entity_name=TEST_STOCK&observation=Test%20observation")
+    response = client.post("/memory/learn?entity_name=TEST_STOCK&observation=Test%20observation")
     assert response.status_code == 200
     
     # Retrieve it
-    response = client.get("/api/v1/brain/memory/TEST_STOCK")
+    response = client.get("/memory/TEST_STOCK")
     assert response.status_code == 200
     data = response.json()
     assert "Test observation" in data["entity"]["observations"]

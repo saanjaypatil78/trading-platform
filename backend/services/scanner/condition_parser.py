@@ -41,7 +41,7 @@ class ConditionParser:
     def parse_natural_language(prompt: str) -> str:
         """
         Heuristic parsing of text prompts to conditions.
-        (In production, this would call an LLM).
+        (In production, this should call GLM 4.7 via the self-updating model registry).
         """
         prompt = prompt.lower()
         

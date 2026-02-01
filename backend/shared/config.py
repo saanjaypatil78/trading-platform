@@ -89,6 +89,12 @@ class Settings(BaseSettings):
     
     # Sentry
     SENTRY_DSN: Optional[str] = None
+
+    # GLM 4.7 Model Registry
+    GLM_API_URL: Optional[str] = None
+    GLM_API_KEY: Optional[str] = None
+    GLM_MODEL_VERSION: str = "4.7"
+    GLM_MODEL_NAME: str = "glm-4.7"
     
     class Config:
         env_file = ".env"
