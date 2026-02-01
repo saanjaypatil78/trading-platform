@@ -1,5 +1,7 @@
 name: Deploy Frontend
 
+run-name: "Vercel autodeploy (disabled in favor of Vercel Git integration)"
+
 on:
   push:
     branches:
@@ -10,6 +12,7 @@ on:
 
 jobs:
   deploy-vercel:
+    if: false
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
