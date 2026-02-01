@@ -32,7 +32,9 @@ interface OrderflowDashboardProps {
 
 export default function OrderflowDashboard({
     symbol = "AAPL",
-    orderflowServiceUrl = "http://localhost:8008",
+    orderflowServiceUrl = process.env.NEXT_PUBLIC_API_URL
+        ? `${process.env.NEXT_PUBLIC_API_URL}/api/v1/orderflow`
+        : "http://localhost:8000/api/v1/orderflow",
 }: OrderflowDashboardProps) {
     const [orderbook, setOrderbook] = useState<OrderBookData | null>(null);
     const [signals, setSignals] = useState<FootprintSignal[]>([]);
@@ -43,7 +45,8 @@ export default function OrderflowDashboard({
 
     // Connect to L2 WebSocket
     useEffect(() => {
-        const wsUrl = `ws://localhost:8008/ws/l2/${symbol}`;
+        const wsBase = orderflowServiceUrl.replace(/^http/, "ws");
+        const wsUrl = `${wsBase}/ws/l2/${symbol}`;
         const ws = new WebSocket(wsUrl);
 
         ws.onopen = () => {
@@ -74,7 +77,8 @@ export default function OrderflowDashboard({
 
     // Connect to signals WebSocket
     useEffect(() => {
-        const wsUrl = `ws://localhost:8008/ws/signals/${symbol}`;
+        const wsBase = orderflowServiceUrl.replace(/^http/, "ws");
+        const wsUrl = `${wsBase}/ws/signals/${symbol}`;
         const ws = new WebSocket(wsUrl);
 
         ws.onmessage = (event) => {

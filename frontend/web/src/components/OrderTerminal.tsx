@@ -9,7 +9,7 @@ import {
     BarChart2, Wallet, Clock, AlertCircle
 } from 'lucide-react';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8009';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 interface Position {
     symbol: string;
