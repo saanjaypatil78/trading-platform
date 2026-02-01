@@ -2,6 +2,8 @@ from typing import List, Optional, Dict, Any
 from pydantic import BaseModel, Field
 import time
 
+from backend.shared.ai_model_registry import glm_registry
+
 class Thought(BaseModel):
     """Represents a single step in the thinking process"""
     thought: str
@@ -23,18 +25,12 @@ class SequentialThinker:
         self.history: List[Thought] = []
         self.branches: Dict[str, List[Thought]] = {"main": []}
         self.current_branch: str = "main"
-        self.model_registry = None
+        self.model_registry = glm_registry
         self.refresh_model()
 
     def refresh_model(self) -> Optional[str]:
         """Refreshes the thinking model reference from the GLM registry."""
-        try:
-            from backend.shared.ai_model_registry import glm_registry
-            self.model_registry = glm_registry
-            return glm_registry.refresh()
-        except Exception:
-            self.model_registry = None
-            return None
+        return glm_registry.refresh()
 
     def add_thought(self, 
                     thought_text: str, 

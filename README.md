@@ -57,16 +57,6 @@ cd frontend/static && python -m http.server 8000
 ## 🏗️ Architecture
 
 ```
-
-## 🔗 Repository Lineage
-
-This workspace combines features inspired by three upstream sources:
-
-- **Chartink**: Scanner DSL and indicator templates power the stock screening workflows.
-- **OpenAlgo**: Order placement, webhook support, and broker adapters shape execution.
-- **FACTRADE-solana**: DeFi staking UI and tokenomics utilities are ported into the passive-income module.
-
-The latest repo focuses on merging these components into one cohesive platform, while keeping the AI layer local and cost-aware.
 ┌─────────────────────────────────────────────────────┐
 │              Frontend (Static HTML)                 │
 │   No npm required - Uses Tailwind CDN + Vanilla JS  │
@@ -89,6 +79,16 @@ The latest repo focuses on merging these components into one cohesive platform, 
    │  Memory  │                     │  Paper   │
    └──────────┘                     └──────────┘
 ```
+
+## 🔗 Repository Lineage
+
+This workspace combines features inspired by three upstream sources:
+
+- **Chartink**: Scanner DSL and indicator templates power the stock screening workflows.
+- **OpenAlgo**: Order placement, webhook support, and broker adapters shape execution.
+- **FACTRADE-solana**: DeFi staking UI and tokenomics utilities are ported into the passive-income module.
+
+The latest repo focuses on merging these components into one cohesive platform, while keeping the AI layer local and cost-aware.
 
 ## 📁 Project Structure
 

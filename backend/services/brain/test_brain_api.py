@@ -8,6 +8,7 @@ import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../')))
 
 from backend.services.brain.main import app
+from backend.shared.ai_model_registry import glm_registry
 
 client = TestClient(app)
 
@@ -15,13 +16,15 @@ def test_health():
     response = client.get("/health")
     assert response.status_code == 200
     assert response.json()["status"] == "healthy"
-    assert response.json()["model"]["model"] == "glm-4.7"
+    expected_model = glm_registry.refresh()
+    assert response.json()["model"]["model"] == expected_model
 
 def test_model_endpoint():
     response = client.get("/model")
     assert response.status_code == 200
     data = response.json()
-    assert data["model"] == "glm-4.7"
+    expected_model = glm_registry.refresh()
+    assert data["model"] == expected_model
 
 def test_entry_analysis_buy():
     payload = {

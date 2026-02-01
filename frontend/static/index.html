@@ -952,17 +952,78 @@
         // Risk Journal Functions
         const journalEntries = [];
 
+        function escapeHtml(value) {
+            if (value === null || value === undefined) {
+                return '';
+            }
+            return String(value).replace(/[&<>"']/g, (char) => ({
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#39;'
+            }[char]));
+        }
+
+        function validateNumber(rawValue, parsedValue, label) {
+            if (rawValue === '' || Number.isNaN(parsedValue)) {
+                alert(`Please enter a valid ${label}.`);
+                return false;
+            }
+            return true;
+        }
+
         function saveJournalEntry() {
+            const instrument = document.getElementById('journal-instrument').value.trim();
+            const entryRaw = document.getElementById('journal-entry').value;
+            const exitRaw = document.getElementById('journal-exit').value;
+            const accountRaw = document.getElementById('journal-account').value;
+            const riskRaw = document.getElementById('journal-risk').value;
+            const dailyRaw = document.getElementById('journal-daily').value;
+
+            const entryValue = parseFloat(entryRaw);
+            const exitValue = parseFloat(exitRaw);
+            const accountSizeValue = parseFloat(accountRaw || 0);
+            const riskPercentValue = parseFloat(riskRaw || 0);
+            const dailyLimitValue = parseFloat(dailyRaw || 0);
+            const sideValue = document.getElementById('journal-side').value;
+
+            if (!instrument) {
+                alert('Please enter an Instrument.');
+                return;
+            }
+            if (!validateNumber(entryRaw, entryValue, 'Entry Price')) {
+                return;
+            }
+            if (!validateNumber(exitRaw, exitValue, 'Exit Price')) {
+                return;
+            }
+            if (!validateNumber(accountRaw, accountSizeValue, 'Account Size')) {
+                return;
+            }
+            if (!validateNumber(riskRaw, riskPercentValue, 'Risk % per Trade')) {
+                return;
+            }
+            if (!validateNumber(dailyRaw, dailyLimitValue, 'Daily Loss Limit')) {
+                return;
+            }
+
+            const allowedSides = ['BUY', 'SELL'];
+            if (!allowedSides.includes(sideValue)) {
+                alert('Please select a valid Side.');
+                return;
+            }
+
             const entry = {
-                instrument: document.getElementById('journal-instrument').value.trim(),
-                side: document.getElementById('journal-side').value,
-                entry: parseFloat(document.getElementById('journal-entry').value || 0),
-                exit: parseFloat(document.getElementById('journal-exit').value || 0),
+                instrument,
+                side: sideValue,
+                entry: entryValue,
+                exit: exitValue,
                 emotion: document.getElementById('journal-emotion').value,
                 strategy: document.getElementById('journal-strategy').value.trim(),
-                accountSize: parseFloat(document.getElementById('journal-account').value || 0),
-                riskPercent: parseFloat(document.getElementById('journal-risk').value || 0),
-                dailyLimit: parseFloat(document.getElementById('journal-daily').value || 0)
+                accountSize: accountSizeValue,
+                riskPercent: riskPercentValue,
+                dailyLimit: dailyLimitValue
             };
 
             journalEntries.unshift(entry);
@@ -979,8 +1040,8 @@
             container.innerHTML = journalEntries.slice(0, 5).map((entry) => `
                 <div class="p-3 rounded bg-black/20 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
                     <div>
-                        <p class="font-semibold">${entry.instrument || 'Untitled'} (${entry.side})</p>
-                        <p class="text-xs text-gray-400">Emotion: ${entry.emotion} • Strategy: ${entry.strategy || 'N/A'}</p>
+                        <p class="font-semibold">${escapeHtml(entry.instrument || 'Untitled')} (${escapeHtml(entry.side)})</p>
+                        <p class="text-xs text-gray-400">Emotion: ${escapeHtml(entry.emotion)} • Strategy: ${escapeHtml(entry.strategy || 'N/A')}</p>
                     </div>
                     <div class="text-xs text-gray-400 md:text-right">
                         <p>Entry: ₹${entry.entry.toFixed(2)} → Exit: ₹${entry.exit.toFixed(2)}</p>
