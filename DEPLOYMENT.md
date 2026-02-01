@@ -13,9 +13,18 @@
 ## 2. Deployment Architecture (Production)
 You want to deploy to **Vercel**. Here is the reality check for a Trading Platform:
 
+### Fitola (New Repo) -> **Vercel Auto-Deploy**
+*   **Goal**: Fitola should auto-deploy via Vercel’s Git integration, using the same organization/team that already hosts Factradr-solana.
+*   **Repo Setup**:
+    1. Create the new `fitola` repository in the same GitHub org/user.
+    2. In Vercel, click **Add New Project** → import `fitola`.
+    3. Confirm the Vercel **Team/Scope** matches the existing Factradr-solana project.
+    4. Set the root directory to match your Next.js app (if `fitola` mirrors this repo, use `frontend/web`).
+*   **Auto-Deploy**: Keep Vercel Git integration enabled; no GitHub Actions deploy job is required.
+
 ### Frontend (Next.js) -> **Vercel (Recommended)**
 *   **Why**: Vercel is built for Next.js. It handles the UI, static pages, and standard API routes perfectly.
-*   **How**: Connect your GitHub repo to Vercel, point it to the `frontend/web` directory.
+*   **How**: Connect your GitHub repo to Vercel, point it to the `frontend/web` directory, and let Vercel auto-deploy on every `main` push. This repo prefers Vercel’s built-in Git integration over GitHub Actions-managed deployments.
 
 ### Backend (Python/FastAPI) -> **NOT Vercel**
 *   **Why Not**:
@@ -25,7 +34,7 @@ You want to deploy to **Vercel**. Here is the reality check for a Trading Platfo
 *   **Recommendation**: Host the Backend on **Render**, **Railway**, **DigitalOcean App Platform**, or a **VPS** (AWS EC2/Hetzner).
 
 ### The "Hybrid" Solution (Best Practice)
-1.  **Deploy Frontend** to **Vercel**.
+1.  **Deploy Frontend** to **Vercel** (auto-deploy via Git integration).
 2.  **Deploy Backend** to **Render** (or Railway).
 3.  **Connect them**: Set the `NEXT_PUBLIC_API_URL` environment variable in Vercel to point to your Render Backend URL.
 
@@ -85,7 +94,7 @@ You only need **ONE** backend. Choose the option that fits your needs:
     *   `NEXT_PUBLIC_API_URL`:
         *   If using **Option A**: `https://your-app.onrender.com`
         *   If using **Option B**: `http://YOUR_EC2_IP:8000`
-5.  Click **Deploy**.
+5.  Click **Deploy** and enable automatic deployments for the `main` branch.
 
 ---
 
@@ -97,4 +106,3 @@ A: Vercel is designed for **Serverless Functions** (short-lived, instant tasks).
 3.  **Background Workers**: Features like "Scheduled Scans" need a process running 24/7. Serverless functions only run when a user visits the site.
 
 **Summary**: Vercel is perfect for the *VisuaI Interface* (Frontend), but you need a *Real Server* (VPS/Render) for the *Brain* (Backend).
-

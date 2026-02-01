@@ -124,6 +124,7 @@
             <div class="tab" data-tab="brain">AI Brain</div>
             <div class="tab" data-tab="defi">DeFi (Passive)</div>
             <div class="tab" data-tab="strategy">AI Strategy</div>
+            <div class="tab" data-tab="journal">Risk Journal</div>
             <div class="tab" data-tab="performance">Performance</div>
             <div class="tab" data-tab="monitor">Monitor</div>
         </div>
@@ -434,6 +435,93 @@
             </div>
         </div>
 
+        <!-- Risk Journal Tab -->
+        <div id="tab-journal" class="tab-content hidden">
+            <div class="grid gap-6">
+                <div class="card p-6">
+                    <h2 class="text-xl font-bold mb-2 flex items-center gap-2">
+                        <i data-lucide="clipboard-pen" class="w-6 h-6 text-green-400"></i>
+                        Disciplined Trader's Buddy
+                    </h2>
+                    <p class="text-slate-400">Log trades, emotions, and risk limits to build disciplined habits.</p>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+                        <div>
+                            <label class="text-xs text-gray-400 block mb-1">Instrument</label>
+                            <input type="text" class="input w-full" id="journal-instrument" placeholder="NIFTY 20000 CE">
+                        </div>
+                        <div>
+                            <label class="text-xs text-gray-400 block mb-1">Side</label>
+                            <select class="input w-full" id="journal-side">
+                                <option value="BUY">Buy</option>
+                                <option value="SELL">Sell</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-xs text-gray-400 block mb-1">Entry Price</label>
+                            <input type="number" class="input w-full" id="journal-entry" placeholder="0.00">
+                        </div>
+                        <div>
+                            <label class="text-xs text-gray-400 block mb-1">Exit Price</label>
+                            <input type="number" class="input w-full" id="journal-exit" placeholder="0.00">
+                        </div>
+                        <div>
+                            <label class="text-xs text-gray-400 block mb-1">Emotion</label>
+                            <select class="input w-full" id="journal-emotion">
+                                <option value="Confident">Confident</option>
+                                <option value="Anxious">Anxious</option>
+                                <option value="Greedy">Greedy</option>
+                                <option value="Fearful">Fearful</option>
+                                <option value="Disciplined">Disciplined</option>
+                                <option value="Revenge Trading">Revenge Trading</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-xs text-gray-400 block mb-1">Strategy Tag</label>
+                            <input type="text" class="input w-full" id="journal-strategy" placeholder="Breakout">
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+                        <div>
+                            <label class="text-xs text-gray-400 block mb-1">Account Size</label>
+                            <input type="number" class="input w-full" id="journal-account" placeholder="100000">
+                        </div>
+                        <div>
+                            <label class="text-xs text-gray-400 block mb-1">Risk % / Trade</label>
+                            <input type="number" class="input w-full" id="journal-risk" placeholder="1">
+                        </div>
+                        <div>
+                            <label class="text-xs text-gray-400 block mb-1">Daily Loss Limit</label>
+                            <input type="number" class="input w-full" id="journal-daily" placeholder="2000">
+                        </div>
+                    </div>
+                    <button class="btn btn-green w-full mt-6" onclick="saveJournalEntry()">Save Journal Entry</button>
+                </div>
+                <div class="card p-6">
+                    <h3 class="text-lg font-semibold mb-4">Recent Entries</h3>
+                    <div id="journal-entries" class="space-y-3 text-sm text-slate-300">
+                        <p class="text-gray-400 text-center py-6">No entries yet. Log your first trade above.</p>
+                    </div>
+                </div>
+                <div class="card p-6">
+                    <h3 class="text-lg font-semibold mb-4">Risk Snapshot</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                        <div class="p-4 bg-black/30 rounded">
+                            <p class="text-xs text-gray-400">Daily Loss Limit</p>
+                            <p id="journal-loss-limit" class="text-lg font-bold">₹0</p>
+                        </div>
+                        <div class="p-4 bg-black/30 rounded">
+                            <p class="text-xs text-gray-400">Risk per Trade</p>
+                            <p id="journal-risk-per-trade" class="text-lg font-bold">0%</p>
+                        </div>
+                        <div class="p-4 bg-black/30 rounded">
+                            <p class="text-xs text-gray-400">Emotional Pattern</p>
+                            <p id="journal-pattern" class="text-lg font-bold text-yellow-400">Track more trades</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Performance Tab -->
         <div id="tab-performance" class="tab-content hidden">
             <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
@@ -701,6 +789,7 @@
                     <p class="text-5xl font-bold ${color}">${decision}</p>
                     ${data.result.confidence ? `<p class="text-sm text-gray-400 mt-2">${data.result.confidence} Confidence</p>` : ''}
                     ${data.result.position_size ? `<p class="text-sm mt-2">Position: ${data.result.position_size} shares</p>` : ''}
+                    ${data.model?.model ? `<p class="text-xs text-slate-400 mt-2">Model: ${data.model.model}</p>` : ''}
                 `;
 
                 if (data.trace && data.trace.length > 0) {
@@ -832,6 +921,10 @@
 
                 document.getElementById('gen-strategy-name').textContent = data.strategy_name;
                 document.getElementById('gen-strategy-code').textContent = data.code.trim();
+                const modelName = data.model?.model ? `Model: ${data.model.model}` : '';
+                if (modelName) {
+                    document.getElementById('gen-strategy-name').textContent += ` (${modelName})`;
+                }
 
                 const stats = data.backtest_results;
                 document.getElementById('gen-backtest-stats').innerHTML = `
@@ -854,6 +947,118 @@
             } catch (err) {
                 alert('Generation failed. Ensure StrategyGen service is running.');
             }
+        }
+
+        // Risk Journal Functions
+        const journalEntries = [];
+
+        function escapeHtml(value) {
+            if (value === null || value === undefined) {
+                return '';
+            }
+            return String(value).replace(/[&<>"']/g, (char) => ({
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#39;'
+            }[char]));
+        }
+
+        function validateNumber(rawValue, parsedValue, label) {
+            if (rawValue === '' || Number.isNaN(parsedValue)) {
+                alert(`Please enter a valid ${label}.`);
+                return false;
+            }
+            return true;
+        }
+
+        function saveJournalEntry() {
+            const instrument = document.getElementById('journal-instrument').value.trim();
+            const entryRaw = document.getElementById('journal-entry').value;
+            const exitRaw = document.getElementById('journal-exit').value;
+            const accountRaw = document.getElementById('journal-account').value;
+            const riskRaw = document.getElementById('journal-risk').value;
+            const dailyRaw = document.getElementById('journal-daily').value;
+
+            const entryValue = parseFloat(entryRaw);
+            const exitValue = parseFloat(exitRaw);
+            const accountSizeValue = parseFloat(accountRaw || 0);
+            const riskPercentValue = parseFloat(riskRaw || 0);
+            const dailyLimitValue = parseFloat(dailyRaw || 0);
+            const sideValue = document.getElementById('journal-side').value;
+
+            if (!instrument) {
+                alert('Please enter an Instrument.');
+                return;
+            }
+            if (!validateNumber(entryRaw, entryValue, 'Entry Price')) {
+                return;
+            }
+            if (!validateNumber(exitRaw, exitValue, 'Exit Price')) {
+                return;
+            }
+            if (!validateNumber(accountRaw, accountSizeValue, 'Account Size')) {
+                return;
+            }
+            if (!validateNumber(riskRaw, riskPercentValue, 'Risk % per Trade')) {
+                return;
+            }
+            if (!validateNumber(dailyRaw, dailyLimitValue, 'Daily Loss Limit')) {
+                return;
+            }
+
+            const allowedSides = ['BUY', 'SELL'];
+            if (!allowedSides.includes(sideValue)) {
+                alert('Please select a valid Side.');
+                return;
+            }
+
+            const entry = {
+                instrument,
+                side: sideValue,
+                entry: entryValue,
+                exit: exitValue,
+                emotion: document.getElementById('journal-emotion').value,
+                strategy: document.getElementById('journal-strategy').value.trim(),
+                accountSize: accountSizeValue,
+                riskPercent: riskPercentValue,
+                dailyLimit: dailyLimitValue
+            };
+
+            journalEntries.unshift(entry);
+            renderJournalEntries();
+            updateRiskSnapshot(entry);
+        }
+
+        function renderJournalEntries() {
+            const container = document.getElementById('journal-entries');
+            if (!journalEntries.length) {
+                container.innerHTML = '<p class="text-gray-400 text-center py-6">No entries yet. Log your first trade above.</p>';
+                return;
+            }
+            container.innerHTML = journalEntries.slice(0, 5).map((entry) => `
+                <div class="p-3 rounded bg-black/20 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+                    <div>
+                        <p class="font-semibold">${escapeHtml(entry.instrument || 'Untitled')} (${escapeHtml(entry.side)})</p>
+                        <p class="text-xs text-gray-400">Emotion: ${escapeHtml(entry.emotion)} • Strategy: ${escapeHtml(entry.strategy || 'N/A')}</p>
+                    </div>
+                    <div class="text-xs text-gray-400 md:text-right">
+                        <p>Entry: ₹${entry.entry.toFixed(2)} → Exit: ₹${entry.exit.toFixed(2)}</p>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function updateRiskSnapshot(entry) {
+            document.getElementById('journal-loss-limit').textContent = `₹${entry.dailyLimit.toLocaleString()}`;
+            document.getElementById('journal-risk-per-trade').textContent = `${entry.riskPercent}%`;
+
+            const revengeTrades = journalEntries.filter(e => e.emotion === 'Revenge Trading').length;
+            const patternText = revengeTrades
+                ? `Revenge trades: ${revengeTrades}`
+                : 'Track more trades';
+            document.getElementById('journal-pattern').textContent = patternText;
         }
 
         // Initialize

@@ -11,6 +11,7 @@ import asyncio
 
 from backend.services.backtesting.high_speed import HighSpeedBacktest
 from backend.shared.messaging import bus, Event, EventTypes
+from backend.shared.ai_model_registry import glm_registry
 
 logger = logging.getLogger(__name__)
 
@@ -39,11 +40,12 @@ class GenerationResult(BaseModel):
     strategy_name: str
     code: str
     backtest_results: Optional[Dict[str, Any]] = None
+    model: Optional[Dict[str, Any]] = None
 
 class StrategyGenerator:
     """
     Simulated LLM-based strategy generator.
-    In production, this would call GPT-4 or Gemini via an API.
+    In production, this should call GLM 4.7 via the self-updating model registry.
     """
     
     def generate_strategy_code(self, description: str) -> str:
@@ -148,7 +150,8 @@ async def generate_strategy(prompt: StrategyPrompt):
         return GenerationResult(
             strategy_name="AI_Generated_Strategy",
             code=code,
-            backtest_results=results
+            backtest_results=results,
+            model=glm_registry.info()
         )
     except Exception as e:
         logger.error(f"Generation failed: {e}")

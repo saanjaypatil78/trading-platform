@@ -4,20 +4,35 @@
       "name": "NVDA",
       "entity_type": "stock",
       "observations": [
-        "BUY (High) at indicator=25.0 on 2026-01-21 21:15"
+        "BUY (High) at indicator=25.0 on 2026-01-21 21:15",
+        "BUY (High) at indicator=25.0 on 2026-02-01 04:36",
+        "BUY (High) at indicator=25.0 on 2026-02-01 04:40",
+        "BUY (High) at indicator=25.0 on 2026-02-01 04:41",
+        "BUY (High) at indicator=25.0 on 2026-02-01 04:42",
+        "BUY (High) at indicator=25.0 on 2026-02-01 04:42"
       ]
     },
     {
       "name": "AAPL",
       "entity_type": "stock",
       "observations": [
-        "SELL (High) at indicator=75.0 on 2026-01-21 21:15"
+        "SELL (High) at indicator=75.0 on 2026-01-21 21:15",
+        "SELL (High) at indicator=75.0 on 2026-02-01 04:36",
+        "SELL (High) at indicator=75.0 on 2026-02-01 04:40",
+        "SELL (High) at indicator=75.0 on 2026-02-01 04:41",
+        "SELL (High) at indicator=75.0 on 2026-02-01 04:42",
+        "SELL (High) at indicator=75.0 on 2026-02-01 04:42"
       ]
     },
     {
       "name": "TEST_STOCK",
       "entity_type": "stock",
       "observations": [
+        "Test observation",
+        "Test observation",
+        "Test observation",
+        "Test observation",
+        "Test observation",
         "Test observation"
       ]
     }

@@ -46,6 +46,7 @@ cd frontend/static && python -m http.server 8000
 - **Sequential Thinking**: Explainable multi-step reasoning
 - **5 Trading Strategies**: Entry, Risk, Regime, Portfolio, Earnings
 - **Knowledge Graph Memory**: Persistent context and learning
+- **GLM 4.7 Registry**: Self-updating model metadata exposed via `/model`
 
 ### Workflow Tools
 - **Action Center**: Auto/Semi-Auto execution modes
@@ -78,6 +79,16 @@ cd frontend/static && python -m http.server 8000
    │  Memory  │                     │  Paper   │
    └──────────┘                     └──────────┘
 ```
+
+## 🔗 Repository Lineage
+
+This workspace combines features inspired by three upstream sources:
+
+- **Chartink**: Scanner DSL and indicator templates power the stock screening workflows.
+- **OpenAlgo**: Order placement, webhook support, and broker adapters shape execution.
+- **FACTRADE-solana**: DeFi staking UI and tokenomics utilities are ported into the passive-income module.
+
+The latest repo focuses on merging these components into one cohesive platform, while keeping the AI layer local and cost-aware.
 
 ## 📁 Project Structure
 

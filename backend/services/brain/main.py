@@ -13,6 +13,7 @@ import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
 
 from backend.shared.brain.strategic_thinking import StrategicThinker, ThinkingStrategy
+from backend.shared.ai_model_registry import glm_registry
 from backend.shared.brain.memory import KnowledgeGraph
 
 app = FastAPI(title="AI Brain Service", version="1.0.0")
@@ -67,13 +68,23 @@ class ThinkingResponse(BaseModel):
     strategy: str
     result: Dict[str, Any]
     trace: List[Dict[str, Any]]
+    model: Optional[Dict[str, Any]] = None
 
 # ============================================================================
 # API Endpoints
 # ============================================================================
 @app.get("/health")
 async def health_check():
-    return {"status": "healthy", "memory_entities": len(memory.entities)}
+    return {
+        "status": "healthy",
+        "memory_entities": len(memory.entities),
+        "model": glm_registry.info()
+    }
+
+@app.get("/model")
+async def model_status():
+    """Return current GLM model registry metadata."""
+    return glm_registry.info()
 
 @app.post("/entry-analysis", response_model=ThinkingResponse)
 async def entry_analysis(request: EntryAnalysisRequest):
@@ -83,7 +94,8 @@ async def entry_analysis(request: EntryAnalysisRequest):
         return ThinkingResponse(
             strategy="entry_analysis",
             result={"decision": result["decision"], "confidence": result["confidence"]},
-            trace=result["trace"]
+            trace=result["trace"],
+            model=glm_registry.info()
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -100,7 +112,8 @@ async def risk_assessment(request: RiskAssessmentRequest):
                 "position_value": result.get("position_value", 0),
                 "risk_amount": result.get("risk_amount", 0)
             },
-            trace=result["trace"]
+            trace=result["trace"],
+            model=glm_registry.info()
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -117,7 +130,8 @@ async def regime_detection(request: RegimeDetectionRequest):
                 "volatility": result["volatility"],
                 "recommendation": result["recommendation"]
             },
-            trace=result["trace"]
+            trace=result["trace"],
+            model=glm_registry.info()
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -130,7 +144,8 @@ async def portfolio_rebalance(request: PortfolioRebalanceRequest):
         return ThinkingResponse(
             strategy="portfolio_rebalance",
             result={"actions": result.get("actions", [])},
-            trace=result["trace"]
+            trace=result["trace"],
+            model=glm_registry.info()
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -146,7 +161,8 @@ async def earnings_play(request: EarningsPlayRequest):
                 "recommended_strategy": result["recommended_strategy"],
                 "rationale": result["rationale"]
             },
-            trace=result["trace"]
+            trace=result["trace"],
+            model=glm_registry.info()
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
