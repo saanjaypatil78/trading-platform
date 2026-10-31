@@ -8,6 +8,8 @@ on:
       - "backend/services/auth/**"
       - "backend/shared/config.py"
       - "backend/tests/test_auth_identity.py"
+      - "backend/services/collaboration/**"
+      - "backend/tests/test_collaboration_workflow.py"
       - ".github/workflows/backend-auth-identity.yml"
   pull_request:
     paths:
@@ -44,4 +46,4 @@ jobs:
           JWT_SECRET_KEY: test-only-secret
           SUPABASE_URL: https://auth.example.test
           SUPABASE_ANON_KEY: test-anon-key
-        run: python -m pytest -q backend/tests/test_auth_identity.py
+        run: python -m pytest -q backend/tests/test_auth_identity.py backend/tests/test_collaboration_workflow.py
