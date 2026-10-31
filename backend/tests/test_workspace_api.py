@@ -92,7 +92,7 @@ def test_workspace_creation_atomically_creates_owner_and_audit(api_client):
         assert memberships[0].role == "OWNER"
         assert session.query(Workspace).count() == 1
         assert session.query(CollaborationAuditEvent).filter_by(
-            workspace_id=data["id"], event_type="WORKSPACE_CREATED"
+            workspace_id=uuid.UUID(data["id"]), event_type="WORKSPACE_CREATED"
         ).count() == 1
 
 
