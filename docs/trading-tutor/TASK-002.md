@@ -143,13 +143,21 @@ TASK-002 remains IN_PROGRESS until the implementation, automated tests, and acce
 - Backend: Python 3.11-era FastAPI services, SQLAlchemy, PostgreSQL driver, Redis client, and WebSocket support.
 - Existing shared database module: SQLAlchemy engine/session factory in backend/shared/database.py.
 - Existing WebSocket service: backend/services/websocket/main.py is for market-data streaming and currently contains a TODO for JWT validation while accepting anonymous connections. It is NOT approved for collaborative document traffic until authentication, workspace authorization, and session revocation are implemented and tested.
-- Existing backend auth security module provides request size and rate-limit helpers but does not itself establish a verified identity for collaboration.
+- Existing backend auth security module provides request size and rate-limit helpers but does not itself establish identity. A new HTTP identity dependency now validates Supabase bearer tokens through Supabase Auth and returns only the verified user ID/email. It does not grant workspace membership or roles.
 - The existing market-data WebSocket protocol is not a Yjs sync protocol. Do not send Yjs messages to it as though it were compatible.
 - Keep collaboration transport isolated from market-data subscriptions. Select a Yjs-compatible provider only after deployment topology, authentication handshake, persistence adapter, and dependency compatibility are verified.
 
 ## Current blockers / implementation prerequisites
 
-1. Identify the canonical authentication dependency that yields a verified user identity for FastAPI routes and WebSocket handshakes.
+1. Complete workspace membership/role authorization on the server; the verified HTTP identity alone is not sufficient to access any document.
+2. Define a short-lived, revocable collaboration WebSocket credential/handshake. Do not pass long-lived Supabase access tokens in query strings, and do not reuse the anonymous market-data WebSocket.
+3. Confirm the actual database migration strategy and workspace membership model before creating persistent collaboration tables.
+4. Select and pin a Yjs-compatible provider and persistence adapter; verify that the hosting platform supports its long-lived WebSocket connections.
+5. Add integration tests proving unauthorized and revoked sessions cannot join or continue editing, then run backend/frontend test and build workflows.
+
+<!-- Historical blocker list retained below for traceability. -->
+
+1. HTTP identity foundation: add a FastAPI dependency that verifies Supabase access tokens through the Auth user endpoint; do not trust client-supplied user IDs. WebSocket handshake credentials and workspace authorization remain open.
 2. Confirm the actual database migration strategy and workspace membership model before creating persistent collaboration tables.
 3. Select and pin a Yjs-compatible provider and persistence adapter; verify that the hosting platform supports its long-lived WebSocket connections.
 4. Add integration tests proving unauthorized and revoked sessions cannot join or continue editing.
