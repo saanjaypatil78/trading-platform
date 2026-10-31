@@ -152,7 +152,7 @@ TASK-002 remains IN_PROGRESS until the implementation, automated tests, and acce
 
 - Alembic is selected as the single backend schema migration mechanism. Configuration and revisions will live under `backend/alembic.ini` and `backend/migrations/`; application startup must not run `create_all()`. The detailed workspace authorization, role matrix, schema boundaries, and collaboration session protocol are recorded in [ADR-002](ADR-002-workspace-authorization-and-migrations.md).
 - Initial workspace roles are OWNER, ADMIN, COACH, EDITOR, and VIEWER. Membership is stored in the backend database and is independent of Supabase identity verification. Document access is inherited from active workspace membership for the first release.
-- Collaboration credentials will be one-time, short-lived, document-scoped credentials sent in the first WebSocket authentication frame over TLS, never in URL query strings. Active sessions must re-check current membership and role on every write.
+- Backend primitives now issue 60-second, one-time, document-scoped collaboration credentials and persist only SHA-256 hashes. No credential-issuing HTTP endpoint or collaboration WebSocket route is exposed yet. When the handshake is implemented, the raw credential must be sent only in the first TLS WebSocket authentication frame, never in URL query strings. Active sessions must re-check current membership and role for every write.
 - Removed hard-coded Upstox API key/secret defaults from `backend/shared/config.py`; the settings now default to unset optional environment variables. This does not erase the values from Git history. Treat them as exposed and revoke/rotate them with the broker provider. No secret values should be committed again.
 - TASK-002 remains IN_PROGRESS. The ADR is a design decision, not evidence that migrations, authorization APIs, persistence, CRDT transport, or frontend collaboration have been implemented.
 
@@ -183,14 +183,32 @@ TASK-002 remains IN_PROGRESS until the implementation, automated tests, and acce
 - Workspace/document API gate: runs #31 and #32 passed on commit c0171759d332ee00da088dbeb639d999a647180f; 68 tests passed, 3 warnings, 0 failures in each run.
 - These are focused backend CI tests. They do not prove full frontend build, production deployment, or concurrent browser editing.
 
+
+### Credential lifecycle and membership revocation foundation
+
+- Added credential issuance/consumption primitives. Credentials are cryptographically random, valid for a 60-second establishment window, stored only as SHA-256 hashes, and scoped to a workspace, document, verified user, and membership version.
+- PostgreSQL row locking and conditional one-time consumption reject expired, replayed, wrong-document, revoked, and stale-membership-version credentials. Concurrent attempts allow only one successful consumer.
+- Added an active-session guard that locks membership and session rows and deliberately keeps the transaction open. The future CRDT update handler must write its durable update and audit event with that same database session, commit before acknowledging the client, and roll back on failure.
+- Added idempotent session closure with a closed timestamp and append-only session-closed audit event. The 60-second credential expiry applies to initial handshake only, not the lifetime of an established socket.
+- Added DELETE /api/v1/collaboration/workspaces/{workspace_id}/members/{member_user_id}. Only an active OWNER/ADMIN with MANAGE_MEMBERS can revoke a non-owner member. Revocation increments membership_version, revokes that member's collaboration sessions, and writes an audit event in one transaction. OWNER removal is rejected pending a dedicated audited owner-transfer flow.
+- No HTTP credential-issuance endpoint or collaboration WebSocket route is exposed yet. The API does not return raw credentials. The anonymous market-data WebSocket remains prohibited for document collaboration.
+
+### CI evidence — credential and revocation gates
+
+- Credential primitive CI runs #36 and #37 passed: 73 tests, 3 warnings, 0 failures.
+- Member-revocation and active-session CI runs #42 and #43 passed on commit 3735a009ed8e427b260f506290ab01ed1819e2d2: 79 tests, 3 warnings, 0 failures in each run.
+- Tests cover hash-only persistence, expiry, wrong-document scope, replay, concurrent credential consumption, stale membership version, active-session revalidation, idempotent close, OWNER protection, Viewer denial, and atomic member/session revocation.
+- These focused backend tests do not prove a live WebSocket handshake, CRDT synchronization, editor reconnect, frontend build, or production deployment.
+
 ## Remaining blockers / exit-gate work
 
-1. Implement one-time, document-scoped WebSocket credentials with a 60-second establishment window. Generate cryptographically random raw credentials, deliver them only in the first TLS WebSocket authentication frame, and persist only a cryptographic hash.
-2. Implement atomic one-time credential consumption. Expired, replayed, wrong-document, revoked, and stale-membership-version credentials must fail closed.
-3. Re-check active membership and membership version for every collaboration message; prove an already-connected session cannot continue writing after revocation.
-4. Select and pin a Yjs-compatible collaboration server/provider and persistence adapter only after verifying deployment topology and long-lived WebSocket support. Keep collaboration transport separate from the anonymous market-data WebSocket.
-5. Implement durable CRDT update storage, bounded batching, snapshots, reconnect/replay, idempotency, payload/concurrency limits, and acknowledgements only after database commit.
-6. Implement the Markdown editor, presence, reconnect states, stable UTF-8 export/import, and backend/frontend build plus integration tests.
-7. Implement task-state persistence and append-only transition/evidence audit. Existing task validators are pure domain logic only.
+1. Add the authenticated HTTPS credential-issuance endpoint only together with a ready-to-consume WebSocket handshake. Keep raw credentials out of logs, URLs, and persistent storage.
+2. Implement a separate collaboration WebSocket route. Accept the credential only in the first TLS WebSocket authentication frame; enforce handshake timeout, message-size limits, exact document scope, and explicit close behavior. Do not reuse the anonymous market-data WebSocket.
+3. Integrate the active-session lock guard with every durable CRDT update transaction. Prove update transactions serialize safely against membership revocation and acknowledge only after update plus audit commit.
+4. Select and pin a Yjs-compatible collaboration server/provider and persistence adapter only after verifying actual deployment topology, provider maintenance/license, and long-lived WebSocket support.
+5. Implement durable CRDT update storage, bounded batching, snapshots, idempotent replay/reconnect, payload/concurrency limits, and recovery after provider/database restart.
+6. Implement the Markdown editor, presence, reconnect states, stable UTF-8 export/import, and full backend/frontend integration/build tests.
+7. Implement durable task-state transitions and append-only acceptance-evidence audit. Existing task validators remain pure domain functions only.
+
 
 Until these gates pass, shared live editing must remain disabled or read-only. No anonymous collaboration endpoint may be exposed. TASK-003 remains blocked until the full TASK-002 exit gate is reviewed and accepted.

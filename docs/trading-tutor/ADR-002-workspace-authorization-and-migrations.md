@@ -1,6 +1,6 @@
 # ADR-002 — Workspace authorization and database migrations
 
-**Status:** Accepted engineering direction; database schema, RBAC service, and initial workspace/document HTTP API implemented; collaboration session/CRDT implementation pending
+**Status:** Accepted engineering direction; schema, RBAC, workspace/document API, credential primitives, and member-revocation API implemented; WebSocket transport/CRDT pending
 **Date:** 2026-10-31
 **Scope:** TASK-002 only. This ADR does not authorize TASK-003 or production collaboration.
 
@@ -57,7 +57,7 @@ The planned schema is:
 - `markdown_documents`: immutable UUID, workspace UUID, document type, title, UTF-8 Markdown body, schema version, content revision, creator UUID, timestamps, archived state.
 - `document_snapshots`: document UUID, CRDT provider/version metadata, opaque snapshot bytes, server timestamp, revision; never treat client state as a trusted snapshot.
 - `document_updates`: document UUID, unique update/idempotency ID, actor UUID, opaque update bytes, server receipt timestamp. Updates are append-only and duplicate update IDs are rejected/idempotently acknowledged.
-- `collaboration_sessions`: opaque session ID, hashed one-time credential, user/workspace/document scope, membership version, expiry, revocation timestamp, creation timestamp. Raw credentials are never persisted or logged.
+- `collaboration_sessions`: opaque session ID, hashed one-time credential, user/workspace/document scope, membership version, 60-second credential-establishment expiry, consumed/revoked/closed timestamps, and creation timestamp. Raw credentials are never persisted or logged. The expiry limits initial handshake only; closed_at records closure of an established socket.
 - `collaboration_audit_events`: append-only event ID, workspace/document/actor IDs, event type, revision, server UTC timestamp, idempotency key, allow-listed metadata. No tokens or secrets.
 - Task state transitions and completion evidence must be represented as append-only audit events; Markdown frontmatter is not authoritative state.
 
@@ -92,19 +92,31 @@ All tables must use explicit foreign keys within this schema, database constrain
 - Workspace/document API CI runs #31 and #32 passed on commit c0171759d332ee00da088dbeb639d999a647180f (68 tests passed, 3 warnings, 0 failures).
 - The API deliberately does not expose a Markdown body overwrite route. It can create and read documents, but shared editing remains unavailable until CRDT transport and persistence are complete.
 
+
+## Credential and revocation implementation evidence (2026-10-31)
+
+- Credential issuance and consumption primitives are implemented in the collaboration session service. The raw credential is returned only by the internal service; the current HTTP API does not expose it.
+- PostgreSQL row locking and one-time consumption bind each credential to the exact user, workspace, document, and membership version. The active-session guard holds membership/session locks through the caller's durable update transaction. Session closure is idempotent and audited.
+- The member-revocation service increments membership_version, revokes related sessions, and appends an audit event in one transaction.
+- The authenticated member-revocation route is DELETE /api/v1/collaboration/workspaces/{workspace_id}/members/{member_user_id}. OWNER removal is rejected; the actor's MANAGE_MEMBERS permission is resolved from persisted active membership.
+- PostgreSQL 16 CI runs #42 and #43 passed on commit 3735a009ed8e427b260f506290ab01ed1819e2d2: 79 tests, 3 warnings, 0 failures in each run.
+- No collaboration WebSocket handshake, HTTP credential-issuance endpoint, CRDT provider/persistence integration, frontend editor, or deployment is implemented by these primitives.
+
 ## Consequences
 
-Alembic is selected because it is already a pinned dependency and matches the existing SQLAlchemy data layer. The initial collaboration schema, workspace authorization service, and read/create HTTP API now exist. This ADR does not implement one-time WebSocket credential issuance/consumption, active-session revocation, CRDT sync/persistence, presence, reconnect, or the frontend editor. It does not authorize TASK-003 or production collaboration.
+Alembic is selected because it is already a pinned dependency and matches the existing SQLAlchemy data layer. The initial collaboration schema, workspace authorization service, read/create HTTP API, one-time credential primitives, active-session lock guard, idempotent session closure, and member-revocation API now exist. This ADR does not implement the credential-issuance HTTP endpoint, WebSocket handshake, per-message CRDT update path, provider synchronization/persistence, presence, reconnect, or frontend editor. It does not authorize TASK-003 or production collaboration.
 
 ## Required verification before TASK-002 can pass
 
 1. Alembic upgrade/downgrade and migration-head checks against PostgreSQL.
 2. Workspace creation atomically creates exactly one OWNER membership.
-3. Every role/permission matrix case has API-level tests.
-4. Cross-workspace document access is denied.
-5. Owner transfer and last-owner protection are tested.
-6. Expired, replayed, wrong-document, and revoked collaboration credentials are rejected.
-7. An active session cannot continue writing after membership revocation.
-8. Audit and document update records are append-only and idempotent.
-9. PostgreSQL integration tests cover constraints, concurrent membership changes, and transaction rollback.
-10. No browser path can bypass backend authorization.
+3. Every role/permission matrix case has API-level tests; cross-workspace access is denied.
+4. Owner transfer and last-owner protection are tested end-to-end.
+5. Expired, replayed, wrong-document, revoked, stale-version, and concurrent credential consumption are rejected safely.
+6. WebSocket handshake accepts a credential only in the first TLS frame; malformed, late, replayed, and oversized frames are rejected.
+7. Active-session update transactions serialize correctly with member revocation; durable update and audit commit before acknowledgement.
+8. Session close, CRDT update replay, snapshot/reconnect, and append-only audit are verified against PostgreSQL.
+9. Yjs provider compatibility, maintenance, license, hosting topology, and persistence behavior are pinned and verified.
+10. PostgreSQL integration tests cover constraints, concurrent membership changes, rollback, and recovery.
+11. No browser path can bypass backend authorization or write collaboration tables directly.
+12. Full frontend/backend build and two-client concurrent convergence tests pass.
