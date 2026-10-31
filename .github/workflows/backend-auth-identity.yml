@@ -24,7 +24,7 @@ permissions:
   contents: read
 
 jobs:
-  auth-identity-tests:
+  auth-and-collaboration-tests:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
