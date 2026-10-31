@@ -239,7 +239,9 @@ def test_owner_cannot_be_removed_by_revocation_service(postgres_factory):
 
 def test_closed_session_fails_active_session_guard_and_close_is_idempotent(postgres_factory):
     _, document_id, user_id = create_document(postgres_factory)
-    with postgres_factory() as db:\n        workspace_id = db.query(MarkdownDocument).filter_by(id=document_id).one().workspace_id\n    issued = issue(postgres_factory, workspace_id, document_id, user_id)
+    with postgres_factory() as db:
+        workspace_id = db.query(MarkdownDocument).filter_by(id=document_id).one().workspace_id
+    issued = issue(postgres_factory, workspace_id, document_id, user_id)
     with postgres_factory() as db:
         assert consume_document_credential(db, document_id, issued.credential) is not None
     with postgres_factory() as db:
