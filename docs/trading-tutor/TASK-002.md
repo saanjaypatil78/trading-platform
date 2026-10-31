@@ -31,13 +31,14 @@ If the final deployment environment cannot host a compatible Yjs provider, stop 
 Each Markdown document has:
 - immutable document ID
 - workspace ID
-- document type: lesson, research, task, decision, or runbook
+- document type: lesson, research, task, decision, runbook, or trade_execution
 - title and Markdown body
 - schema version
 - content revision / CRDT state version
 - owner and access-control metadata
 - created_at and updated_at timestamps in UTC
 - archived flag
+- optional linked trade_id for trade_execution documents; the trade ledger remains authoritative for financial facts
 
 Task Markdown uses YAML frontmatter with validated fields:
 - id
@@ -51,6 +52,17 @@ Task Markdown uses YAML frontmatter with validated fields:
 - updated_at
 
 The Markdown body contains context, implementation notes, test evidence, decisions, and a completion summary. Frontmatter is parsed as data and must never be executed as code.
+
+### Trade execution document behavior
+
+A trade_execution document is linked to exactly one simulated trade ID. It contains the human-readable thesis and structured entry, management, and exit conditions, but it is not the source of truth for orders, fills, fees, timestamps, or P&L.
+
+- The initial entry snapshot is captured before or at entry. If captured later, it is visibly marked LATE_CAPTURE.
+- The document remains editable while the linked trade is OPEN, subject to server-side ownership and coach permissions.
+- Every accepted edit produces an immutable revision/audit event with actor, server UTC timestamp, effective time, reason, and references to the prior/current versions.
+- Structured condition bases include PRICE_ACTION, INDICATOR, LIQUIDITY, MARKET_CONTEXT, RISK_RULE, TIME_EVENT, DISCRETIONARY, and HYBRID. HYBRID requires explicit ALL/ANY grouping.
+- A CLOSED trade makes the main journal read-only. Post-close clarifications are append-only addenda.
+- CRDT collaboration may merge concurrent Markdown text changes, but it must not overwrite structured ledger facts or audit history.
 
 ## Sequential execution state machine
 
@@ -104,6 +116,10 @@ No task may skip states. No dependent task may enter RUNNING until all dependenc
 12. Reopening a completed task creates a new revision and preserves prior audit history.
 13. Markdown export is stable and round-trips UTF-8 content and frontmatter.
 14. Automated tests cover concurrency, reconnect, permissions, invalid transitions, and idempotency.
+15. A trade_execution document can only link to an authorised simulated trade and is editable only while that trade is OPEN.
+16. Every accepted trade-journal amendment preserves the prior revision and records actor, server timestamp, effective time, reason, and evidence references.
+17. Closing a trade freezes its journal; post-close corrections are append-only addenda and cannot mutate ledger facts.
+18. HYBRID conditions require explicit ALL/ANY semantics, and indicator conditions retain exact settings/timeframe/version metadata.
 
 ## Implementation sequence
 
