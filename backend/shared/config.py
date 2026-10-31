@@ -28,6 +28,10 @@ class Settings(BaseSettings):
     # RabbitMQ
     RABBITMQ_URL: Optional[str] = None
     
+    # Supabase Auth (backend-only configuration; never expose service-role keys)
+    SUPABASE_URL: Optional[str] = None
+    SUPABASE_ANON_KEY: Optional[str] = None
+    
     # JWT
     JWT_SECRET_KEY: str
     JWT_ALGORITHM: str = "HS256"
