@@ -124,7 +124,7 @@ No task may skip states. No dependent task may enter RUNNING until all dependenc
 ## Implementation sequence
 
 1. Inspect the existing database/authentication abstractions and frontend component conventions.
-2. Add validated document and task domain models.
+2. Add validated document and task domain models. The task frontmatter and pure transition/dependency validators are now implemented; durable persistence and audit events remain pending.
 3. Add workspace/document persistence and server-side access checks.
 4. Add collaboration transport and CRDT persistence/snapshot strategy.
 5. Add the Markdown editor and presence/reconnect states.
@@ -144,6 +144,7 @@ TASK-002 remains IN_PROGRESS until the implementation, automated tests, and acce
 - Existing shared database module: SQLAlchemy engine/session factory in backend/shared/database.py.
 - Existing WebSocket service: backend/services/websocket/main.py is for market-data streaming and currently contains a TODO for JWT validation while accepting anonymous connections. It is NOT approved for collaborative document traffic until authentication, workspace authorization, and session revocation are implemented and tested.
 - Existing backend auth security module provides request size and rate-limit helpers but does not itself establish identity. A new HTTP identity dependency now validates Supabase bearer tokens through Supabase Auth and returns only the verified user ID/email. It does not grant workspace membership or roles.
+- Added pure Pydantic task-frontmatter validation, sequential transition rules, dependency existence checks, and cycle detection. These validators do not yet persist state or write audit events.
 - The existing market-data WebSocket protocol is not a Yjs sync protocol. Do not send Yjs messages to it as though it were compatible.
 - Keep collaboration transport isolated from market-data subscriptions. Select a Yjs-compatible provider only after deployment topology, authentication handshake, persistence adapter, and dependency compatibility are verified.
 
