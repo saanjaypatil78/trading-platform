@@ -5,6 +5,8 @@ os.environ.setdefault("DATABASE_URL", "sqlite:///./test.db")
 os.environ.setdefault("REDIS_URL", "redis://localhost:6379/0")
 os.environ.setdefault("JWT_SECRET_KEY", "test-only-secret")
 
+from datetime import datetime, timezone
+
 import pytest
 from pydantic import ValidationError
 
@@ -26,6 +28,8 @@ def test_task_frontmatter_accepts_valid_task():
         priority=TaskPriority.P0,
         depends_on=["TASK-001"],
         acceptance_criteria=["Two authenticated editors converge"],
+        created_at=datetime(2026, 10, 31, 0, 0, tzinfo=timezone.utc),
+        updated_at=datetime(2026, 10, 31, 0, 0, tzinfo=timezone.utc),
     )
     assert task.status == TaskStatus.READY
 
@@ -98,3 +102,20 @@ def test_dependency_cycle_and_missing_reference_are_rejected():
 
 def test_acyclic_dependency_graph_is_accepted():
     validate_dependency_graph({"A": [], "B": ["A"], "C": ["A", "B"]})
+
+
+def test_frontmatter_rejects_naive_or_non_utc_timestamps():
+    with pytest.raises(ValidationError):
+        TaskFrontmatter(
+            id="TASK-3",
+            title="Naive time",
+            created_at=datetime(2026, 10, 31),
+            updated_at=datetime(2026, 10, 31),
+        )
+    with pytest.raises(ValidationError):
+        TaskFrontmatter(
+            id="TASK-3",
+            title="Reversed time",
+            created_at=datetime(2026, 10, 31, 1, 0, tzinfo=timezone.utc),
+            updated_at=datetime(2026, 10, 31, 0, 0, tzinfo=timezone.utc),
+        )
