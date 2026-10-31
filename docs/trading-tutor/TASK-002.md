@@ -148,11 +148,19 @@ TASK-002 remains IN_PROGRESS until the implementation, automated tests, and acce
 - The existing market-data WebSocket protocol is not a Yjs sync protocol. Do not send Yjs messages to it as though it were compatible.
 - Keep collaboration transport isolated from market-data subscriptions. Select a Yjs-compatible provider only after deployment topology, authentication handshake, persistence adapter, and dependency compatibility are verified.
 
+## Engineering decisions recorded (2026-10-31)
+
+- Alembic is selected as the single backend schema migration mechanism. Configuration and revisions will live under `backend/alembic.ini` and `backend/migrations/`; application startup must not run `create_all()`. The detailed workspace authorization, role matrix, schema boundaries, and collaboration session protocol are recorded in [ADR-002](ADR-002-workspace-authorization-and-migrations.md).
+- Initial workspace roles are OWNER, ADMIN, COACH, EDITOR, and VIEWER. Membership is stored in the backend database and is independent of Supabase identity verification. Document access is inherited from active workspace membership for the first release.
+- Collaboration credentials will be one-time, short-lived, document-scoped credentials sent in the first WebSocket authentication frame over TLS, never in URL query strings. Active sessions must re-check current membership and role on every write.
+- Removed hard-coded Upstox API key/secret defaults from `backend/shared/config.py`; the settings now default to unset optional environment variables. This does not erase the values from Git history. Treat them as exposed and revoke/rotate them with the broker provider. No secret values should be committed again.
+- TASK-002 remains IN_PROGRESS. The ADR is a design decision, not evidence that migrations, authorization APIs, persistence, CRDT transport, or frontend collaboration have been implemented.
+
 ## Current blockers / implementation prerequisites
 
 1. Complete workspace membership/role authorization on the server; the verified HTTP identity alone is not sufficient to access any document.
 2. Define a short-lived, revocable collaboration WebSocket credential/handshake. Do not pass long-lived Supabase access tokens in query strings, and do not reuse the anonymous market-data WebSocket.
-3. Confirm the actual database migration strategy and workspace membership model before creating persistent collaboration tables.
+3. Implement and verify the selected Alembic migration strategy and workspace membership schema before enabling persistent collaboration tables.
 4. Select and pin a Yjs-compatible provider and persistence adapter; verify that the hosting platform supports its long-lived WebSocket connections.
 5. Add integration tests proving unauthorized and revoked sessions cannot join or continue editing, then run backend/frontend test and build workflows.
 
