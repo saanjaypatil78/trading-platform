@@ -36,7 +36,7 @@ For each inbound document update:
 8. Commit PostgreSQL successfully before returning from `beforeSync`. If authorization, validation, insert, or commit fails, throw/reject so Hocuspocus does not apply or broadcast that update.
 9. After `beforeSync` returns successfully, Hocuspocus applies the update. The Yjs document update listener broadcasts it (synchronously when `flushDelay: false`), then the sync handler sends its success status. The actual wire ordering still requires an integration test.
 9. Periodically create binary Yjs snapshots from the document state and persist them with provider/version metadata. Snapshots are a recovery optimization, not the source of truth; replay retained append-only updates after the snapshot revision.
-10. On process restart, load the latest valid binary snapshot and replay subsequent committed updates before accepting connections.
+11. On process restart, load the latest valid binary snapshot and replay subsequent committed updates before accepting connections.
 
 ## Failure semantics
 
@@ -74,7 +74,7 @@ For each inbound document update:
 8. Replay identical bytes and verify one update row, one audit row, and no duplicate revision.
 9. Send two different updates concurrently from two users and verify monotonic revisions and converged Yjs state.
 10. Race member revocation against a document update and prove there is no post-revocation committed update.
-11. Verify VIEWER can read but cannot write, including attempts through raw WebSocket frames and the preSync hook.
+11. Verify VIEWER can read but cannot write, including attempts through raw WebSocket frames and the beforeSync hook.
 12. Verify binary snapshot + update replay reconstructs the same Yjs state as two connected clients.
 13. Verify payload/message/connection limits, rate limiting, graceful shutdown, and recovery under process restart.
 
