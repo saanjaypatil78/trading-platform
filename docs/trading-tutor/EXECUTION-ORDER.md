@@ -12,10 +12,11 @@ Tasks are executed strictly in dependency order. A task cannot be marked complet
 | 6 | TASK-006 | Versioned indicator engine | Golden-data and determinism tests |
 | 7 | TASK-007 | Deep Research Tutor and lesson workflow | Source grounding and failure/retry tests |
 | 8 | TASK-008 | Simulated challenge lifecycle | State-machine and authorization tests |
-| 9 | TASK-009 | Monthly qualification calculator | Decimal precision and boundary tests |
-| 10 | TASK-010 | Twelve-month streak tracker and audit | Consecutive-month/reset tests |
-| 11 | TASK-011 | Reward/legal separation controls | Negative tests prove all payouts disabled |
-| 12 | TASK-012 | Production readiness | Security, observability, backup/restore, release review |
+| 9 | TASK-013 | Live trade execution journal and rationale history | Entry snapshot, editable open-trade plan, exit attribution, immutable version history verified |
+| 10 | TASK-009 | Monthly qualification calculator | Decimal precision and boundary tests |
+| 11 | TASK-010 | Twelve-month streak tracker and audit | Consecutive-month/reset tests |
+| 12 | TASK-011 | Reward/legal separation controls | Negative tests prove all payouts disabled |
+| 13 | TASK-012 | Production readiness | Security, observability, backup/restore, release review |
 
 ## Execution protocol
 
