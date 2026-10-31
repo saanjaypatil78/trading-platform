@@ -99,6 +99,9 @@ If a verified metric misses its threshold, the month is FAILED. If evidence is i
 - FR-10 Collaboration: Support shared Markdown task/learning workspaces with explicit ownership, versioning, and conflict-safe updates.
 - FR-11 Auditability: Preserve calculation versions, input snapshots, policy versions, and administrative changes.
 - FR-12 Reward separation: Keep all reward and payment functions disabled behind a server-side policy gate.
+- FR-13 Trade execution journal: Require a structured, trade-linked execution journal covering the entry thesis, execution basis, evidence, invalidation, risk management, and planned exit logic for every simulated trade.
+- FR-14 Live journal amendments: Permit authorised edits to the thesis and exit logic while a trade is open, preserving every prior version, server timestamp, effective time, actor, and change reason in an append-only audit history.
+- FR-15 Exit attribution: Record which planned or newly amended condition triggered each partial or final exit, and distinguish planned rules from the actual observed execution reason.
 
 ## 8. Non-functional requirements
 
@@ -149,3 +152,75 @@ The initial release is simulation-only. Release requires passing automated tests
 - Historical trades and qualification results cannot be silently edited.
 - Twelve consecutive qualified months trigger final audit only.
 - Reward/payment capability is server-side disabled and has automated negative tests.
+- Every simulated trade has an entry execution-journal snapshot linked to its trade ID; missing or late-captured rationale is explicitly flagged and cannot be presented as contemporaneous.
+- An open trade's journal can be amended, but each amendment preserves the previous content, actor, server timestamp, effective time, reason, and evidence reference.
+- Exit conditions support price-action, indicator, liquidity, market-context, risk-management, time/event, discretionary, and hybrid rule types without hard-coded indicator settings.
+- Each partial/final exit records the actual trigger, observed evidence, and the journal version/condition it relates to, where applicable.
+- Closed trade journals cannot be overwritten; corrections are append-only addenda.
+- Journal edits cannot change ledger fills, fees, timestamps, realised P&L, or qualification results.
+
+
+## 13. Live trade execution journal — normative behavior
+
+### 13.1 Purpose and source of truth
+
+Every simulated trade must have a structured execution journal linked to its immutable trade/ledger identity. The journal explains why the trade was entered, what was expected to happen, how the position would be managed, and what actually caused each exit.
+
+The journal is an explanatory decision record, not the financial ledger and not an order-routing interface. The ledger remains authoritative for orders, fills, quantities, timestamps, costs, and realised P&L. Editing Markdown must never modify those ledger facts.
+
+### 13.2 Entry snapshot
+
+Before or at simulated entry, capture an initial entry snapshot containing:
+- instrument, direction, timeframe(s), and setup name or strategy identifier;
+- execution basis: PRICE_ACTION, INDICATOR, LIQUIDITY, MARKET_CONTEXT, RISK_RULE, DISCRETIONARY, or HYBRID;
+- the observed entry trigger and why it supports the trade;
+- entry price reference, initial stop/invalidation, target or exit plan, and planned risk;
+- relevant indicator names, parameters, source timeframe, and calculation/version metadata when indicators are used;
+- relevant liquidity reference and level/session context when liquidity is used;
+- evidence references such as chart snapshot, market-data snapshot, candle/time range, or annotated note.
+
+A trade imported or journalled after entry must be marked LATE_CAPTURE, with capture time and reason. It must not be represented as a contemporaneous pre-entry plan.
+
+### 13.3 Editable while open
+
+While the simulated position is OPEN, the authorised owner (and an explicitly permitted coach, where workspace policy allows) may update:
+- the current trade thesis and market-structure interpretation;
+- active entry/continuation/re-entry notes, where relevant;
+- stop-loss, breakeven, trailing-stop, partial-booking, and target-management rationale;
+- exit conditions and the priority/order in which they should be evaluated;
+- the reason for keeping, reducing, or closing the position.
+
+Every amendment creates a new immutable version. Store the actor, server-generated UTC timestamp, user-declared effective time (which cannot be earlier than the last accepted version), change reason, before/after version references, and optional market/chart evidence. Do not permit silent overwrite, deletion, or backdating. The UI must show the current plan and the full version timeline.
+
+### 13.4 Condition model
+
+A condition may use one or more of these bases:
+- PRICE_ACTION: candle close/rejection, swing high/low, break of structure, change of character, retest, range break, or other explicitly described price behavior.
+- INDICATOR: named indicator, exact settings/version, source timeframe, comparison/operator, threshold or signal state, and observed value.
+- LIQUIDITY: reference type and level, such as previous-day/session high or low, equal highs/lows, a defined liquidity pool, sweep/grab, or reclaim; record the source and timestamp.
+- MARKET_CONTEXT: session, volatility/regime, volume profile/VWAP reference, or a documented market-context event.
+- RISK_RULE: initial/final stop, max risk, breakeven, trailing, partial booking, or invalidation rule.
+- TIME_EVENT: a time/session boundary or scheduled event rule, with timezone and source where applicable.
+- DISCRETIONARY: a manual decision with a mandatory written explanation and evidence reference.
+- HYBRID: a versioned group of two or more conditions using explicit ALL or ANY semantics. Do not infer whether conditions are AND/OR.
+
+Each condition must specify its role (ENTRY, MANAGEMENT, EXIT, or INVALIDATION), timeframe, trigger definition, expected action, and whether it was manually observed or system-evaluated. System-evaluated conditions must record the evaluator/version and data provenance; a human annotation must not be presented as an automatically detected signal.
+
+### 13.5 Exit and trade-close record
+
+An exit plan may contain multiple conditional actions, including MOVE_STOP, MOVE_TO_BREAKEVEN, TRAIL_STOP, PARTIAL_EXIT, and CLOSE_POSITION. For each actual partial/final exit, record the observed trigger, time, price/fill reference, quantity, evidence, and linked condition/version when available. Distinguish:
+- PLANNED_EXIT: the exit followed a condition in the currently active plan;
+- PLAN_AMENDED_EXIT: the exit followed a condition added or changed after entry;
+- DISCRETIONARY_EXIT: the user closed manually and supplied a reason;
+- RISK_FORCED_EXIT: the configured risk/stop rule caused the exit;
+- OTHER: a reason requiring an explanatory note.
+
+After the trade is CLOSED, the journal becomes read-only. A correction is a separate append-only addendum with actor, timestamp, reason, and references to the record being clarified. It cannot alter the original entry snapshot, amendment history, exit events, or ledger values.
+
+### 13.6 Safety, audit, and analytics
+
+- The feature is simulation-only in the initial release and does not send orders to a broker or exchange.
+- Journal edits never rewrite fills, fees, order state, timestamps, balances, realised P&L, or qualification calculations.
+- A missing journal, late capture, or unlinked exit reason is visible in review and analytics; it is never silently filled with invented rationale.
+- Analytics must be able to compare the original plan, amendments, and actual outcome without hindsight contamination.
+- Access control is checked server-side for every read, edit, export, addendum, and version-history request.
