@@ -84,6 +84,7 @@ def issue_document_credential(
         user_id=user_id,
         membership_version=membership.membership_version,
         expires_at=expires_at,
+        created_at=now,
     )
     audit_event = CollaborationAuditEvent(
         id=uuid4(),
@@ -166,6 +167,7 @@ def consume_document_credential(
                 CollaborationSession.token_hash == token_hash,
                 CollaborationSession.consumed_at.is_(None),
                 CollaborationSession.revoked_at.is_(None),
+                CollaborationSession.closed_at.is_(None),
                 CollaborationSession.expires_at > current_time,
             )
             .with_for_update(skip_locked=True)
@@ -208,6 +210,120 @@ def consume_document_credential(
         )
         db.commit()
         return result
+    except SQLAlchemyError:
+        db.rollback()
+        raise
+
+
+def lock_active_collaboration_session(
+    db: Session,
+    session_id: UUID,
+) -> ConsumedCredential | None:
+    """Lock a connected session through the caller's durable update transaction.
+
+    The returned transaction remains open. Persist the CRDT update and audit
+    record using this same SQLAlchemy Session, commit before acknowledging, and
+    roll back on every failure. Revocation must use the same membership->session
+    lock order so it cannot commit between authorization and durable update.
+    """
+    try:
+        candidate = (
+            db.query(CollaborationSession)
+            .filter(CollaborationSession.id == session_id)
+            .first()
+        )
+        if candidate is None:
+            db.rollback()
+            return None
+
+        membership = (
+            db.query(WorkspaceMember)
+            .filter(
+                WorkspaceMember.workspace_id == candidate.workspace_id,
+                WorkspaceMember.user_id == candidate.user_id,
+            )
+            .with_for_update()
+            .first()
+        )
+        session_row = (
+            db.query(CollaborationSession)
+            .populate_existing()
+            .filter(CollaborationSession.id == session_id)
+            .with_for_update()
+            .first()
+        )
+        if session_row is None:
+            db.rollback()
+            return None
+
+        valid = (
+            session_row.consumed_at is not None
+            and session_row.revoked_at is None
+            and session_row.closed_at is None
+            and membership is not None
+            and membership.revoked_at is None
+            and membership.membership_version == session_row.membership_version
+            and has_permission(membership.role, WorkspacePermission.READ)
+        )
+        if not valid:
+            db.rollback()
+            return None
+
+        return ConsumedCredential(
+            session_id=session_row.id,
+            workspace_id=session_row.workspace_id,
+            document_id=session_row.document_id,
+            user_id=session_row.user_id,
+            membership_version=session_row.membership_version,
+            role=membership.role,
+        )
+    except SQLAlchemyError:
+        db.rollback()
+        raise
+
+
+def close_collaboration_session(db: Session, session_id: UUID) -> bool:
+    """Close a disconnected socket session, idempotently and with an audit row."""
+    now = datetime.now(timezone.utc)
+    try:
+        candidate = (
+            db.query(CollaborationSession)
+            .filter(CollaborationSession.id == session_id)
+            .first()
+        )
+        if candidate is None:
+            db.rollback()
+            return False
+
+        db.query(WorkspaceMember).filter(
+            WorkspaceMember.workspace_id == candidate.workspace_id,
+            WorkspaceMember.user_id == candidate.user_id,
+        ).with_for_update().first()
+
+        session_row = (
+            db.query(CollaborationSession)
+            .populate_existing()
+            .filter(CollaborationSession.id == session_id)
+            .with_for_update()
+            .first()
+        )
+        if session_row is None or session_row.closed_at is not None:
+            db.rollback()
+            return False
+
+        session_row.closed_at = now
+        db.add(
+            CollaborationAuditEvent(
+                id=uuid4(),
+                workspace_id=session_row.workspace_id,
+                document_id=session_row.document_id,
+                actor_id=session_row.user_id,
+                event_type="COLLABORATION_SESSION_CLOSED",
+                event_metadata={"session_id": str(session_row.id)},
+            )
+        )
+        db.commit()
+        return True
     except SQLAlchemyError:
         db.rollback()
         raise

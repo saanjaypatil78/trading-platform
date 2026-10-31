@@ -124,6 +124,7 @@ def upgrade() -> None:
         sa.Column("expires_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("consumed_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("revoked_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column("closed_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False),
         sa.ForeignKeyConstraint(
             ["document_id", "workspace_id"],

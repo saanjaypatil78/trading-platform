@@ -153,6 +153,7 @@ class CollaborationSession(Base):
     expires_at = Column(DateTime(timezone=True), nullable=False)
     consumed_at = Column(DateTime(timezone=True), nullable=True)
     revoked_at = Column(DateTime(timezone=True), nullable=True)
+    closed_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
 
 
