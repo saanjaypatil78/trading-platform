@@ -18,7 +18,7 @@ os.environ.setdefault("REDIS_URL", "redis://localhost:6379/0")
 os.environ.setdefault("JWT_SECRET_KEY", "test-only-secret")
 
 from shared.database import Base
-from backend.services.scanner.models import Scan, ScanResult
+from services.scanner.models import Scan, ScanResult
 
 
 def test_existing_orm_models_register_on_the_shared_base():
