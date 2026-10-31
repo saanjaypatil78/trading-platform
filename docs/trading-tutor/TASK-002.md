@@ -1,6 +1,6 @@
 # TASK-002 — Shared Markdown execution and collaboration
 
-**Status:** In progress — repository fit and technical design established  
+**Status:** In progress — PostgreSQL collaboration schema, workspace RBAC, and initial authenticated workspace/document APIs implemented; CRDT collaboration remains pending  
 **Priority:** P0  
 **Depends on:** TASK-001  
 **Branch:** codex/trading-tutor-task-002-markdown-collaboration
@@ -156,13 +156,41 @@ TASK-002 remains IN_PROGRESS until the implementation, automated tests, and acce
 - Removed hard-coded Upstox API key/secret defaults from `backend/shared/config.py`; the settings now default to unset optional environment variables. This does not erase the values from Git history. Treat them as exposed and revoke/rotate them with the broker provider. No secret values should be committed again.
 - TASK-002 remains IN_PROGRESS. The ADR is a design decision, not evidence that migrations, authorization APIs, persistence, CRDT transport, or frontend collaboration have been implemented.
 
-## Current blockers / implementation prerequisites
+## Implemented milestones and verification (2026-10-31)
 
-1. Complete workspace membership/role authorization on the server; the verified HTTP identity alone is not sufficient to access any document.
-2. Define a short-lived, revocable collaboration WebSocket credential/handshake. Do not pass long-lived Supabase access tokens in query strings, and do not reuse the anonymous market-data WebSocket.
-3. Implement and verify the selected Alembic migration strategy and workspace membership schema before enabling persistent collaboration tables.
-4. Select and pin a Yjs-compatible provider and persistence adapter; verify that the hosting platform supports its long-lived WebSocket connections.
-5. Add integration tests proving unauthorized and revoked sessions cannot join or continue editing, then run backend/frontend test and build workflows.
+### Database and migration foundation
+- Added Alembic configuration, migration environment, an initial PostgreSQL revision, and collaboration ORM models on the existing shared SQLAlchemy Base metadata.
+- Added the workspace/document/session/audit schema, foreign-key and uniqueness constraints, an exactly-one-active-OWNER database invariant, and append-only database triggers for document updates, snapshots, and collaboration audit events.
+- PostgreSQL 16 CI verifies migration upgrade/downgrade, owner creation within the workspace transaction, rejection of an ownerless workspace, last-owner protection, and append-only mutation rejection.
+- Migration execution remains an explicit deployment/release step. Application startup does not call create_all() or apply migrations implicitly.
 
+### Workspace authorization and initial HTTP API
+- Implemented the server-side role/permission policy for OWNER, ADMIN, COACH, EDITOR, and VIEWER. A verified Supabase identity is not treated as workspace permission.
+- Each authorization check loads the persisted active membership for the requested workspace. Missing/revoked membership or insufficient permission returns 403; authorization database failure returns 503 (fail closed).
+- Added authenticated endpoints:
+  - POST /api/v1/collaboration/workspaces
+  - GET /api/v1/collaboration/workspaces
+  - POST /api/v1/collaboration/workspaces/{workspace_id}/documents
+  - GET /api/v1/collaboration/workspaces/{workspace_id}/documents
+  - GET /api/v1/collaboration/workspaces/{workspace_id}/documents/{document_id}
+- Workspace creation records its creator as OWNER and writes the workspace audit event in the same transaction. Document creation and reads require server-side workspace permissions.
+- No HTTP Markdown-body update endpoint is exposed. Live editing remains unavailable until the CRDT update path exists; this avoids last-write-wins replacement of concurrent edits.
+- Membership invitations, role changes, and owner-transfer APIs are not implemented.
 
-These are implementation gates, not reasons to weaken the security requirements. Until resolved, shared editing must remain disabled or read-only; no anonymous collaboration endpoint may be exposed.
+### CI evidence
+- PostgreSQL migration and metadata gate: GitHub Actions runs #21 and #22 passed.
+- RBAC gate: runs #23 and #24 passed; 63 tests passed.
+- Workspace/document API gate: runs #31 and #32 passed on commit c0171759d332ee00da088dbeb639d999a647180f; 68 tests passed, 3 warnings, 0 failures in each run.
+- These are focused backend CI tests. They do not prove full frontend build, production deployment, or concurrent browser editing.
+
+## Remaining blockers / exit-gate work
+
+1. Implement one-time, document-scoped WebSocket credentials with a 60-second establishment window. Generate cryptographically random raw credentials, deliver them only in the first TLS WebSocket authentication frame, and persist only a cryptographic hash.
+2. Implement atomic one-time credential consumption. Expired, replayed, wrong-document, revoked, and stale-membership-version credentials must fail closed.
+3. Re-check active membership and membership version for every collaboration message; prove an already-connected session cannot continue writing after revocation.
+4. Select and pin a Yjs-compatible collaboration server/provider and persistence adapter only after verifying deployment topology and long-lived WebSocket support. Keep collaboration transport separate from the anonymous market-data WebSocket.
+5. Implement durable CRDT update storage, bounded batching, snapshots, reconnect/replay, idempotency, payload/concurrency limits, and acknowledgements only after database commit.
+6. Implement the Markdown editor, presence, reconnect states, stable UTF-8 export/import, and backend/frontend build plus integration tests.
+7. Implement task-state persistence and append-only transition/evidence audit. Existing task validators are pure domain logic only.
+
+Until these gates pass, shared live editing must remain disabled or read-only. No anonymous collaboration endpoint may be exposed. TASK-003 remains blocked until the full TASK-002 exit gate is reviewed and accepted.

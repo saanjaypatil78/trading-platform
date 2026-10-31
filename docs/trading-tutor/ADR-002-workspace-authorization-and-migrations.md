@@ -1,6 +1,6 @@
 # ADR-002 — Workspace authorization and database migrations
 
-**Status:** Accepted engineering direction; implementation pending
+**Status:** Accepted engineering direction; database schema, RBAC service, and initial workspace/document HTTP API implemented; collaboration session/CRDT implementation pending
 **Date:** 2026-10-31
 **Scope:** TASK-002 only. This ADR does not authorize TASK-003 or production collaboration.
 
@@ -82,9 +82,19 @@ All tables must use explicit foreign keys within this schema, database constrain
 - Database/provider failures disable shared editing or return a retryable error; they never trigger last-write-wins fallback.
 - All role changes, membership revocations, task approvals, and document exports are auditable.
 
+## Implementation evidence (2026-10-31)
+
+- Added the Alembic environment and initial PostgreSQL migration under backend/alembic.ini and backend/migrations/.
+- Collaboration ORM models register on the existing shared SQLAlchemy Base metadata.
+- PostgreSQL 16 Actions runs #21 and #22 passed migration upgrade/downgrade and database invariant checks.
+- The server-side RBAC service is implemented in backend/services/collaboration/authorization.py. Its full role matrix and fail-closed tests passed CI runs #23 and #24 (63 tests).
+- Authenticated workspace/document endpoints are implemented in backend/services/collaboration/router.py and mounted by backend/unified_entrypoint.py.
+- Workspace/document API CI runs #31 and #32 passed on commit c0171759d332ee00da088dbeb639d999a647180f (68 tests passed, 3 warnings, 0 failures).
+- The API deliberately does not expose a Markdown body overwrite route. It can create and read documents, but shared editing remains unavailable until CRDT transport and persistence are complete.
+
 ## Consequences
 
-Alembic is selected because it is already a pinned dependency and matches the existing SQLAlchemy data layer. The workspace schema and role policy are now defined, but no migration, ORM persistence, membership API, WebSocket session implementation, or CRDT provider has been implemented by this ADR.
+Alembic is selected because it is already a pinned dependency and matches the existing SQLAlchemy data layer. The initial collaboration schema, workspace authorization service, and read/create HTTP API now exist. This ADR does not implement one-time WebSocket credential issuance/consumption, active-session revocation, CRDT sync/persistence, presence, reconnect, or the frontend editor. It does not authorize TASK-003 or production collaboration.
 
 ## Required verification before TASK-002 can pass
 
