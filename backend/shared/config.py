@@ -44,8 +44,8 @@ class Settings(BaseSettings):
     
     FINNHUB_API_KEY: Optional[str] = None
     
-    UPSTOX_API_KEY: str = "88112d04-5505-48a9-81ab-124aa04311b3"
-    UPSTOX_API_SECRET: str = "o963nixptz"
+    UPSTOX_API_KEY: Optional[str] = None
+    UPSTOX_API_SECRET: Optional[str] = None
     POLYGON_API_KEY: Optional[str] = None
     
     RATELIMIT_ENABLED: bool = True
