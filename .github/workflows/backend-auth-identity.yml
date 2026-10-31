@@ -14,6 +14,7 @@ on:
       - "backend/alembic.ini"
       - "backend/tests/test_auth_identity.py"
       - "backend/tests/test_database_metadata.py"
+      - "backend/tests/test_workspace_authorization.py"
       - "backend/tests/test_collaboration_workflow.py"
       - "backend/tests/test_migrations.py"
       - ".github/workflows/backend-auth-identity.yml"
@@ -28,6 +29,7 @@ on:
       - "backend/alembic.ini"
       - "backend/tests/test_auth_identity.py"
       - "backend/tests/test_database_metadata.py"
+      - "backend/tests/test_workspace_authorization.py"
       - "backend/tests/test_collaboration_workflow.py"
       - "backend/tests/test_migrations.py"
       - ".github/workflows/backend-auth-identity.yml"
@@ -67,11 +69,11 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install fastapi==0.109.0 pydantic==2.5.3 pydantic-settings==2.1.0 httpx==0.26.0 sqlalchemy==2.0.25 alembic==1.13.1 psycopg2-binary==2.9.9 pytest==7.4.4 pytest-asyncio==0.23.3
 
-      - name: Run auth, database, migration, and collaboration tests
+      - name: Run auth, database, authorization, migration, and collaboration tests
         env:
           DATABASE_URL: postgresql+psycopg2://postgres:postgres@localhost:5432/trading_test
           REDIS_URL: redis://localhost:6379/0
           JWT_SECRET_KEY: test-only-secret
           SUPABASE_URL: https://auth.example.test
           SUPABASE_ANON_KEY: test-anon-key
-        run: python -m pytest -q backend/tests/test_auth_identity.py backend/tests/test_database_metadata.py backend/tests/test_migrations.py backend/tests/test_collaboration_workflow.py
+        run: python -m pytest -q backend/tests/test_auth_identity.py backend/tests/test_database_metadata.py backend/tests/test_workspace_authorization.py backend/tests/test_migrations.py backend/tests/test_collaboration_workflow.py
