@@ -17,6 +17,7 @@ on:
       - "backend/tests/test_database_metadata.py"
       - "backend/tests/test_workspace_authorization.py"
       - "backend/tests/test_workspace_api.py"
+      - "backend/tests/test_collaboration_sessions.py"
       - "backend/tests/test_collaboration_workflow.py"
       - "backend/tests/test_migrations.py"
       - ".github/workflows/backend-auth-identity.yml"
@@ -80,4 +81,4 @@ jobs:
           JWT_SECRET_KEY: test-only-secret
           SUPABASE_URL: https://auth.example.test
           SUPABASE_ANON_KEY: test-anon-key
-        run: python -m pytest -q backend/tests/test_auth_identity.py backend/tests/test_database_metadata.py backend/tests/test_workspace_authorization.py backend/tests/test_workspace_api.py backend/tests/test_migrations.py backend/tests/test_collaboration_workflow.py
+        run: python -m pytest -q backend/tests/test_auth_identity.py backend/tests/test_database_metadata.py backend/tests/test_workspace_authorization.py backend/tests/test_workspace_api.py backend/tests/test_migrations.py backend/tests/test_collaboration_sessions.py backend/tests/test_collaboration_workflow.py
