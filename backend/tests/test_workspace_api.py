@@ -2,6 +2,7 @@
 import os
 import sys
 import uuid
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
@@ -23,6 +24,7 @@ from backend.services.auth.identity import AuthenticatedUser, get_current_user
 from services.collaboration.router import router
 from services.collaboration.models import (
     CollaborationAuditEvent,
+    CollaborationSession,
     MarkdownDocument,
     Workspace,
     WorkspaceMember,
@@ -34,6 +36,7 @@ COLLABORATION_TABLES = (
     Workspace.__table__,
     WorkspaceMember.__table__,
     MarkdownDocument.__table__,
+    CollaborationSession.__table__,
     CollaborationAuditEvent.__table__,
 )
 
@@ -187,6 +190,127 @@ def test_viewer_cannot_create_document_but_can_read(api_client):
         assert allowed.status_code == 200
         assert len(allowed.json()) == 1
         assert allowed.json()[0]["id"] == owner_document.json()["id"]
+
+
+
+def test_owner_revocation_invalidates_member_and_active_sessions(api_client):
+    owner_client, factory, owner_id = api_client
+    workspace_response = owner_client.post(
+        "/api/v1/collaboration/workspaces", json={"name": "Revocation"}
+    )
+    workspace_id = uuid.UUID(workspace_response.json()["id"])
+    member_id = uuid.uuid4()
+
+    document_response = owner_client.post(
+        f"/api/v1/collaboration/workspaces/{workspace_id}/documents",
+        json={"document_type": "research", "title": "Revocation fixture"},
+    )
+    assert document_response.status_code == 201
+    document_id = uuid.UUID(document_response.json()["id"])
+    now = datetime.now(timezone.utc)
+    session_id = uuid.uuid4()
+
+    with factory() as db:
+        db.add(
+            WorkspaceMember(
+                id=uuid.uuid4(),
+                workspace_id=workspace_id,
+                user_id=member_id,
+                role="EDITOR",
+                membership_version=1,
+            )
+        )
+        db.add(
+            CollaborationSession(
+                id=session_id,
+                token_hash="a" * 64,
+                workspace_id=workspace_id,
+                document_id=document_id,
+                user_id=member_id,
+                membership_version=1,
+                expires_at=now + timedelta(seconds=60),
+                created_at=now,
+                consumed_at=now,
+            )
+        )
+        db.commit()
+
+    response = owner_client.delete(
+        f"/api/v1/collaboration/workspaces/{workspace_id}/members/{member_id}"
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["workspace_id"] == str(workspace_id)
+    assert data["member_user_id"] == str(member_id)
+    assert data["membership_version"] == 2
+
+    with factory() as db:
+        member = db.query(WorkspaceMember).filter_by(
+            workspace_id=workspace_id, user_id=member_id
+        ).one()
+        session = db.query(CollaborationSession).filter_by(id=session_id).one()
+        audit = db.query(CollaborationAuditEvent).filter_by(
+            workspace_id=workspace_id, event_type="WORKSPACE_MEMBER_REVOKED"
+        ).one()
+        assert member.revoked_at is not None
+        assert member.membership_version == 2
+        assert session.revoked_at is not None
+        assert audit.actor_id == owner_id
+
+
+def test_workspace_owner_cannot_be_removed_by_member_revocation(api_client):
+    client, _, owner_id = api_client
+    workspace_response = client.post(
+        "/api/v1/collaboration/workspaces", json={"name": "Owner protected"}
+    )
+    workspace_id = workspace_response.json()["id"]
+
+    result = client.delete(
+        f"/api/v1/collaboration/workspaces/{workspace_id}/members/{owner_id}"
+    )
+    assert result.status_code == 409
+
+
+def test_viewer_cannot_revoke_workspace_member(api_client):
+    owner_client, factory, _ = api_client
+    response = owner_client.post(
+        "/api/v1/collaboration/workspaces", json={"name": "Viewer revoke"}
+    )
+    workspace_id = uuid.UUID(response.json()["id"])
+    viewer_id = uuid.uuid4()
+    target_id = uuid.uuid4()
+
+    with factory() as db:
+        db.add_all([
+            WorkspaceMember(
+                id=uuid.uuid4(), workspace_id=workspace_id, user_id=viewer_id,
+                role="VIEWER", membership_version=1,
+            ),
+            WorkspaceMember(
+                id=uuid.uuid4(), workspace_id=workspace_id, user_id=target_id,
+                role="EDITOR", membership_version=1,
+            ),
+        ])
+        db.commit()
+
+    def viewer_db():
+        session = factory()
+        try:
+            yield session
+        finally:
+            session.close()
+
+    app = FastAPI()
+    app.include_router(router)
+    app.dependency_overrides[get_current_user] = (
+        lambda: AuthenticatedUser(user_id=str(viewer_id))
+    )
+    app.dependency_overrides[get_db] = viewer_db
+    with TestClient(app) as viewer_client:
+        denied = viewer_client.delete(
+            f"/api/v1/collaboration/workspaces/{workspace_id}/members/{target_id}"
+        )
+    assert denied.status_code == 403
 
 
 def test_user_outside_workspace_cannot_read_documents(api_client):

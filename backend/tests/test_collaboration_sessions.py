@@ -30,7 +30,10 @@ from services.collaboration.sessions import (
     consume_document_credential,
     hash_credential,
     issue_document_credential,
+    lock_active_collaboration_session,
+    close_collaboration_session,
 )
+from services.collaboration.members import revoke_workspace_member
 
 
 @pytest.fixture(scope="module")
@@ -182,3 +185,66 @@ def test_malformed_credential_is_rejected(postgres_factory):
     with postgres_factory() as db:
         assert consume_document_credential(db, document_id, "") is None
         assert consume_document_credential(db, document_id, "x" * 129) is None
+
+
+def test_member_revocation_invalidates_active_session_and_update_guard(postgres_factory):
+    workspace_id, document_id, user_id = create_document(postgres_factory)
+    issued = issue(postgres_factory, workspace_id, document_id, user_id)
+
+    with postgres_factory() as db:
+        consumed = consume_document_credential(db, document_id, issued.credential)
+    assert consumed is not None
+
+    # The successful guard holds both row locks until the caller commits or
+    # rolls back its durable CRDT update transaction.
+    with postgres_factory() as db:
+        active = lock_active_collaboration_session(db, issued.session_id)
+        assert active is not None
+        assert active.user_id == user_id
+        db.rollback()
+
+    with postgres_factory() as db:
+        owner_id = db.query(WorkspaceMember).filter_by(
+            workspace_id=workspace_id, role="OWNER"
+        ).one().user_id
+    with postgres_factory() as db:
+        result = revoke_workspace_member(db, workspace_id, owner_id, user_id)
+    assert result.membership_version == 2
+
+    with postgres_factory() as db:
+        active_after = lock_active_collaboration_session(db, issued.session_id)
+    assert active_after is None
+
+    with postgres_factory() as db:
+        member = db.query(WorkspaceMember).filter_by(
+            workspace_id=workspace_id, user_id=user_id
+        ).one()
+        session = db.query(CollaborationSession).filter_by(id=issued.session_id).one()
+        assert member.revoked_at is not None
+        assert member.membership_version == 2
+        assert session.revoked_at is not None
+
+
+def test_owner_cannot_be_removed_by_revocation_service(postgres_factory):
+    workspace_id, _, _ = create_document(postgres_factory)
+    with postgres_factory() as db:
+        owner_id = db.query(WorkspaceMember).filter_by(
+            workspace_id=workspace_id, role="OWNER"
+        ).one().user_id
+    with postgres_factory() as db:
+        with pytest.raises(Exception) as exc:
+            revoke_workspace_member(db, workspace_id, owner_id, owner_id)
+    assert getattr(exc.value, "status_code", None) == 409
+
+
+def test_closed_session_fails_active_session_guard_and_close_is_idempotent(postgres_factory):
+    _, document_id, user_id = create_document(postgres_factory)
+    with postgres_factory() as db:\n        workspace_id = db.query(MarkdownDocument).filter_by(id=document_id).one().workspace_id\n    issued = issue(postgres_factory, workspace_id, document_id, user_id)
+    with postgres_factory() as db:
+        assert consume_document_credential(db, document_id, issued.credential) is not None
+    with postgres_factory() as db:
+        assert close_collaboration_session(db, issued.session_id) is True
+    with postgres_factory() as db:
+        assert lock_active_collaboration_session(db, issued.session_id) is None
+    with postgres_factory() as db:
+        assert close_collaboration_session(db, issued.session_id) is False

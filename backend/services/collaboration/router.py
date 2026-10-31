@@ -5,6 +5,7 @@ must be implemented through the approved CRDT transport, not last-write-wins
 HTTP replacement.
 """
 import uuid
+from datetime import datetime
 from enum import Enum
 from typing import List
 from uuid import UUID
@@ -25,6 +26,7 @@ from services.collaboration.models import (
     Workspace,
     WorkspaceMember,
 )
+from services.collaboration.members import revoke_workspace_member
 from shared.database import get_db
 
 
@@ -282,3 +284,31 @@ def get_document(
     if document is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
     return document
+
+
+class MemberRevocationResponse(BaseModel):
+    workspace_id: UUID
+    member_user_id: UUID
+    membership_version: int
+    revoked_at: datetime
+
+
+@router.delete(
+    "/workspaces/{workspace_id}/members/{member_user_id}",
+    response_model=MemberRevocationResponse,
+)
+def remove_workspace_member(
+    workspace_id: UUID,
+    member_user_id: UUID,
+    user: AuthenticatedUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Revoke a non-owner member and all associated collaboration sessions."""
+    actor_id = _verified_user_id(user)
+    result = revoke_workspace_member(db, workspace_id, actor_id, member_user_id)
+    return MemberRevocationResponse(
+        workspace_id=result.workspace_id,
+        member_user_id=result.member_user_id,
+        membership_version=result.membership_version,
+        revoked_at=result.revoked_at,
+    )

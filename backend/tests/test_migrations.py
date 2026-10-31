@@ -40,6 +40,7 @@ def test_workspace_migration_constraints_and_downgrade():
             "collaboration_audit_events",
         }
         assert expected_tables <= set(inspect(engine).get_table_names())
+        assert "closed_at" in {column["name"] for column in inspect(engine).get_columns("collaboration_sessions")}
 
         # The deferred constraint must reject a workspace without an active owner.
         with pytest.raises(DBAPIError):
