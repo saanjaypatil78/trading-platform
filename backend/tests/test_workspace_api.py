@@ -340,3 +340,97 @@ def test_user_outside_workspace_cannot_read_documents(api_client):
             f"/api/v1/collaboration/workspaces/{workspace_id}/documents"
         )
         assert response.status_code == 403
+
+
+def test_collaboration_credential_endpoint_issues_non_cacheable_scoped_secret(api_client):
+    client, factory, _ = api_client
+    workspace_response = client.post(
+        "/api/v1/collaboration/workspaces", json={"name": "Credential API"}
+    )
+    workspace_id = workspace_response.json()["id"]
+    document_response = client.post(
+        f"/api/v1/collaboration/workspaces/{workspace_id}/documents",
+        json={"document_type": "research", "title": "Credential document"},
+    )
+    assert document_response.status_code == 201
+    document_id = document_response.json()["id"]
+
+    response = client.post(
+        f"/api/v1/collaboration/workspaces/{workspace_id}/documents/{document_id}/collaboration-credential"
+    )
+    assert response.status_code == 200
+    assert response.headers["cache-control"] == "no-store, private"
+    assert response.headers["pragma"] == "no-cache"
+    data = response.json()
+    assert data["expires_in_seconds"] == 60
+    assert data["credential"]
+    assert len(data["credential"]) <= 128
+
+    with factory() as db:
+        session = db.query(CollaborationSession).filter_by(
+            id=uuid.UUID(data["session_id"])
+        ).one()
+        from services.collaboration.sessions import hash_credential
+        assert session.token_hash == hash_credential(data["credential"])
+        assert session.token_hash != data["credential"]
+        assert session.document_id == uuid.UUID(document_id)
+        assert session.workspace_id == uuid.UUID(workspace_id)
+
+
+def test_collaboration_credential_endpoint_rejects_document_outside_workspace(api_client):
+    client, _, _ = api_client
+    workspace_response = client.post(
+        "/api/v1/collaboration/workspaces", json={"name": "Credential boundary"}
+    )
+    workspace_id = workspace_response.json()["id"]
+
+    response = client.post(
+        f"/api/v1/collaboration/workspaces/{workspace_id}/documents/{uuid.uuid4()}/collaboration-credential"
+    )
+    assert response.status_code == 404
+
+
+def test_viewer_can_obtain_scoped_read_credential_but_cannot_edit_documents(api_client):
+    owner_client, factory, _ = api_client
+    workspace_response = owner_client.post(
+        "/api/v1/collaboration/workspaces", json={"name": "Viewer collaboration"}
+    )
+    workspace_id = uuid.UUID(workspace_response.json()["id"])
+    document_response = owner_client.post(
+        f"/api/v1/collaboration/workspaces/{workspace_id}/documents",
+        json={"document_type": "lesson", "title": "Viewer lesson"},
+    )
+    document_id = uuid.UUID(document_response.json()["id"])
+    viewer_id = uuid.uuid4()
+
+    with factory() as db:
+        db.add(WorkspaceMember(
+            id=uuid.uuid4(), workspace_id=workspace_id, user_id=viewer_id,
+            role="VIEWER", membership_version=1,
+        ))
+        db.commit()
+
+    def viewer_db():
+        session = factory()
+        try:
+            yield session
+        finally:
+            session.close()
+
+    app = FastAPI()
+    app.include_router(router)
+    app.dependency_overrides[get_current_user] = (
+        lambda: AuthenticatedUser(user_id=str(viewer_id))
+    )
+    app.dependency_overrides[get_db] = viewer_db
+
+    with TestClient(app) as viewer_client:
+        allowed = viewer_client.post(
+            f"/api/v1/collaboration/workspaces/{workspace_id}/documents/{document_id}/collaboration-credential"
+        )
+        assert allowed.status_code == 200
+        denied_document_create = viewer_client.post(
+            f"/api/v1/collaboration/workspaces/{workspace_id}/documents",
+            json={"document_type": "lesson", "title": "Viewer cannot create"},
+        )
+        assert denied_document_create.status_code == 403
