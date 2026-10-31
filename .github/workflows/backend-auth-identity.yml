@@ -1,4 +1,4 @@
-name: Backend Auth Identity Tests
+name: Backend Auth and Collaboration Domain Tests
 
 on:
   push:
@@ -16,6 +16,8 @@ on:
       - "backend/services/auth/**"
       - "backend/shared/config.py"
       - "backend/tests/test_auth_identity.py"
+      - "backend/services/collaboration/**"
+      - "backend/tests/test_collaboration_workflow.py"
       - ".github/workflows/backend-auth-identity.yml"
 
 permissions:
@@ -39,7 +41,7 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install fastapi==0.109.0 pydantic==2.5.3 pydantic-settings==2.1.0 httpx==0.26.0 pytest==7.4.4 pytest-asyncio==0.23.3
 
-      - name: Run verified identity tests
+      - name: Run auth and collaboration domain tests
         env:
           DATABASE_URL: sqlite:///./test.db
           REDIS_URL: redis://localhost:6379/0
