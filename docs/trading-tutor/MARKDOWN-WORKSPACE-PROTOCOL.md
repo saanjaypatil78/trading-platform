@@ -53,3 +53,16 @@
 - Collaboration provider unavailable: disable shared editing and offer read-only mode; do not silently switch to last-write-wins.
 - Invalid frontmatter: preserve raw content, flag validation errors, and block workflow actions.
 - Invalid transition: return a typed conflict response and retain the audit trail.
+
+
+## Trade execution journal protocol
+
+- A trade_execution Markdown document must reference one canonical simulated trade_id; the ledger is authoritative for financial and execution facts.
+- Capture the entry thesis before or at entry. Later capture must be marked LATE_CAPTURE and include a reason.
+- While the trade is OPEN, authorised users may amend the thesis, management rules, and exit conditions. The service must append a new version and audit event rather than replacing the previous version.
+- Each amendment records actor, server-generated UTC timestamp, effective time, reason, previous/current revision, and optional evidence reference. Effective time cannot be backdated before the last accepted version.
+- Conditions use explicit typed bases (price action, indicator, liquidity, market context, risk rule, time/event, discretionary, or hybrid). Hybrid logic must explicitly declare ALL or ANY semantics.
+- The actual exit event records the condition/version that triggered it, or a documented discretionary/risk-forced reason.
+- Once the linked trade is CLOSED, the journal becomes read-only. Corrections are append-only addenda.
+- Journal editing must never mutate ledger orders, fills, costs, position quantities, balances, or realised P&L.
+- CRDT merge behavior applies to collaborative prose only; structured execution events and audit records are server-authoritative and append-only.
