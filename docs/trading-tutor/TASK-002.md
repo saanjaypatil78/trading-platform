@@ -119,3 +119,23 @@ No task may skip states. No dependent task may enter RUNNING until all dependenc
 ## Exit gate
 
 TASK-002 remains IN_PROGRESS until the implementation, automated tests, and acceptance evidence are committed and reviewed. TASK-003 must not begin before TASK-002 is COMPLETE.
+
+
+## Repository assessment (2026-10-31)
+
+- Frontend: Next.js 14, React 18, TypeScript, Supabase JS client.
+- Backend: Python 3.11-era FastAPI services, SQLAlchemy, PostgreSQL driver, Redis client, and WebSocket support.
+- Existing shared database module: SQLAlchemy engine/session factory in backend/shared/database.py.
+- Existing WebSocket service: backend/services/websocket/main.py is for market-data streaming and currently contains a TODO for JWT validation while accepting anonymous connections. It is NOT approved for collaborative document traffic until authentication, workspace authorization, and session revocation are implemented and tested.
+- Existing backend auth security module provides request size and rate-limit helpers but does not itself establish a verified identity for collaboration.
+- The existing market-data WebSocket protocol is not a Yjs sync protocol. Do not send Yjs messages to it as though it were compatible.
+- Keep collaboration transport isolated from market-data subscriptions. Select a Yjs-compatible provider only after deployment topology, authentication handshake, persistence adapter, and dependency compatibility are verified.
+
+## Current blockers / implementation prerequisites
+
+1. Identify the canonical authentication dependency that yields a verified user identity for FastAPI routes and WebSocket handshakes.
+2. Confirm the actual database migration strategy and workspace membership model before creating persistent collaboration tables.
+3. Select and pin a Yjs-compatible provider and persistence adapter; verify that the hosting platform supports its long-lived WebSocket connections.
+4. Add integration tests proving unauthorized and revoked sessions cannot join or continue editing.
+
+These are implementation gates, not reasons to weaken the security requirements. Until resolved, shared editing must remain disabled or read-only; no anonymous collaboration endpoint may be exposed.
