@@ -128,13 +128,13 @@ def test_expired_credential_is_rejected_without_consumption(postgres_factory):
     workspace_id, document_id, user_id = create_document(postgres_factory)
     issued = issue(postgres_factory, workspace_id, document_id, user_id)
 
+    # Simulate a clock after the persisted expiry. Do not mutate expires_at:
+    # the database correctly enforces expires_at > created_at.
+    simulated_now = issued.expires_at + timedelta(seconds=1)
     with postgres_factory() as db:
-        row = db.query(CollaborationSession).filter_by(id=issued.session_id).one()
-        row.expires_at = datetime.now(timezone.utc) - timedelta(seconds=1)
-        db.commit()
-
-    with postgres_factory() as db:
-        consumed = consume_document_credential(db, document_id, issued.credential)
+        consumed = consume_document_credential(
+            db, document_id, issued.credential, now=simulated_now
+        )
     assert consumed is None
 
     with postgres_factory() as db:
