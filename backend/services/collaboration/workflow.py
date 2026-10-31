@@ -3,6 +3,7 @@
 Persistence and append-only audit storage are implemented by later collaboration
 infrastructure work; this module only validates proposed state transitions.
 """
+from datetime import datetime, timedelta
 from enum import Enum
 from typing import Mapping, Sequence
 
@@ -35,6 +36,8 @@ class TaskFrontmatter(BaseModel):
     depends_on: list[str] = Field(default_factory=list)
     acceptance_criteria: list[str] = Field(default_factory=list)
     owner_id: str | None = None
+    created_at: datetime
+    updated_at: datetime
 
     @model_validator(mode="after")
     def validate_dependencies(self):
@@ -44,6 +47,11 @@ class TaskFrontmatter(BaseModel):
             raise ValueError("Dependency IDs must be unique")
         if any(not item.strip() for item in self.depends_on):
             raise ValueError("Dependency IDs cannot be blank")
+        for field_name, value in (("created_at", self.created_at), ("updated_at", self.updated_at)):
+            if value.tzinfo is None or value.utcoffset() != timedelta(0):
+                raise ValueError(f"{field_name} must be timezone-aware UTC")
+        if self.updated_at < self.created_at:
+            raise ValueError("updated_at cannot be earlier than created_at")
         return self
 
 
