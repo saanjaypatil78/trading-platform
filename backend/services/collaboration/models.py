@@ -40,6 +40,7 @@ class WorkspaceMember(Base):
         Index(
             "uq_workspace_active_owner", "workspace_id", unique=True,
             postgresql_where=text("role = 'OWNER' AND revoked_at IS NULL"),
+            sqlite_where=text("role = 'OWNER' AND revoked_at IS NULL"),
         ),
     )
 

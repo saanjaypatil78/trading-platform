@@ -86,7 +86,7 @@ def test_workspace_creation_atomically_creates_owner_and_audit(api_client):
     assert data["role"] == "OWNER"
 
     with factory() as session:
-        memberships = session.query(WorkspaceMember).filter_by(workspace_id=data["id"]).all()
+        memberships = session.query(WorkspaceMember).filter_by(workspace_id=uuid.UUID(data["id"])).all()
         assert len(memberships) == 1
         assert memberships[0].user_id == user_id
         assert memberships[0].role == "OWNER"
