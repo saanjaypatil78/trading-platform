@@ -9,7 +9,7 @@ from uuid import UUID
 import httpx
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel
 
 from backend.shared.config import settings
 
