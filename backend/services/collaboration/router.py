@@ -10,7 +10,7 @@ from enum import Enum
 from typing import List
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
@@ -27,6 +27,7 @@ from services.collaboration.models import (
     WorkspaceMember,
 )
 from services.collaboration.members import revoke_workspace_member
+from services.collaboration.sessions import issue_document_credential
 from shared.database import get_db
 
 
@@ -85,6 +86,14 @@ class DocumentResponse(BaseModel):
     body: str
     schema_version: int
     content_revision: int
+
+class CollaborationCredentialResponse(BaseModel):
+    session_id: UUID
+    credential: str
+    expires_at: datetime
+    expires_in_seconds: int
+
+
 
 
 def _verified_user_id(user: AuthenticatedUser) -> UUID:
@@ -291,6 +300,47 @@ class MemberRevocationResponse(BaseModel):
     member_user_id: UUID
     membership_version: int
     revoked_at: datetime
+
+
+@router.post(
+    "/workspaces/{workspace_id}/documents/{document_id}/collaboration-credential",
+    response_model=CollaborationCredentialResponse,
+)
+def create_collaboration_credential(
+    workspace_id: UUID,
+    document_id: UUID,
+    response: Response,
+    user: AuthenticatedUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Issue a short-lived, one-time credential for an authorized document member.
+
+    This endpoint does not establish a WebSocket connection or enable editing.
+    The CRDT provider must still consume the credential and enforce the
+    returned membership role on every update.
+    """
+    user_id = _verified_user_id(user)
+    try:
+        issued = issue_document_credential(db, workspace_id, document_id, user_id)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Document not found in the requested workspace",
+        ) from exc
+    except SQLAlchemyError as exc:
+        db.rollback()
+        raise _database_unavailable(exc) from exc
+
+    # A raw one-time credential is a bearer secret: never let intermediaries
+    # or browsers cache it, and never log it.
+    response.headers["Cache-Control"] = "no-store, private"
+    response.headers["Pragma"] = "no-cache"
+    return CollaborationCredentialResponse(
+        session_id=issued.session_id,
+        credential=issued.credential,
+        expires_at=issued.expires_at,
+        expires_in_seconds=issued.expires_in_seconds,
+    )
 
 
 @router.delete(
