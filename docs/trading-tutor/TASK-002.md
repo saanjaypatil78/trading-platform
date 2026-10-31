@@ -156,11 +156,5 @@ TASK-002 remains IN_PROGRESS until the implementation, automated tests, and acce
 4. Select and pin a Yjs-compatible provider and persistence adapter; verify that the hosting platform supports its long-lived WebSocket connections.
 5. Add integration tests proving unauthorized and revoked sessions cannot join or continue editing, then run backend/frontend test and build workflows.
 
-<!-- Historical blocker list retained below for traceability. -->
-
-1. HTTP identity foundation: add a FastAPI dependency that verifies Supabase access tokens through the Auth user endpoint; do not trust client-supplied user IDs. WebSocket handshake credentials and workspace authorization remain open.
-2. Confirm the actual database migration strategy and workspace membership model before creating persistent collaboration tables.
-3. Select and pin a Yjs-compatible provider and persistence adapter; verify that the hosting platform supports its long-lived WebSocket connections.
-4. Add integration tests proving unauthorized and revoked sessions cannot join or continue editing.
 
 These are implementation gates, not reasons to weaken the security requirements. Until resolved, shared editing must remain disabled or read-only; no anonymous collaboration endpoint may be exposed.
