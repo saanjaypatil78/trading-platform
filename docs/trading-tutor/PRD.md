@@ -1,6 +1,6 @@
 # Trading Tutor — Product Requirements Document
 
-**Status:** Draft baseline for implementation  
+**Status:** Approved policy baseline for implementation  
 **Version:** 1.0  
 **Scope:** Simulated trading education and qualification only  
 **Financial rewards:** Disabled; no deposit-, recharge-, loss-pool-, or entry-fee-funded prizes.
@@ -44,13 +44,13 @@ Profit factor is calculated from per-trade net realized P&L after allocated trad
 profit_factor = sum(positive_trade_net_pnl) / abs(sum(negative_trade_net_pnl))
 
 - Zero-P&L trades contribute to neither gross profit nor gross loss.
-- If gross loss is zero and gross profit is positive, store UNDEFINED_NO_LOSS rather than persisting infinity or silently treating it as a numeric pass. Qualification requires review until the policy is explicitly decided.
+- If gross loss is zero and gross profit is positive, the approved policy treats the profit-factor criterion as PASSED (zero-gross-loss pass). Do not persist infinity or a fabricated numeric ratio; store the explicit result status NO_GROSS_LOSS_PASS and retain gross profit, gross loss, and the calculation version as evidence. This pass applies only to the profit-factor criterion; all other monthly qualification gates still apply.
 - If both gross profit and gross loss are zero, the result is UNDEFINED_NO_ACTIVITY and cannot pass.
 - The numeric pass threshold is 1.00 or greater.
 
 ### 3.3 Sample sufficiency
 
-The minimum number of closed trades per month is a policy parameter, not yet approved. Do not hard-code a minimum sample count. Until a product owner approves a value, record the closed-trade count and route sample sufficiency to REVIEW_REQUIRED rather than granting automatic qualification.
+There is no fixed minimum closed-trade count. The system must record the monthly count and route sample sufficiency to a manual reviewer. The reviewer makes a case-by-case decision using documented evidence and a written rationale; the decision and reviewer identity are audited. A month cannot automatically pass sample sufficiency solely because it has trades.
 
 ## 4. Monthly qualification decision
 
@@ -125,8 +125,8 @@ If a verified metric misses its threshold, the month is FAILED. If evidence is i
 
 | ID | Decision | Current handling |
 |---|---|---|
-| OD-01 | Minimum closed trades per month | Unapproved; qualification requires review |
-| OD-02 | Treatment of profitable month with zero gross loss | Unapproved; qualification requires review |
+| OD-01 | Minimum closed trades per month | Resolved: no fixed numeric minimum; manual reviewer assesses sufficiency case by case with an audited rationale |
+| OD-02 | Treatment of profitable month with zero gross loss | Resolved: profit-factor criterion passes when gross profit > 0 and gross loss = 0; store NO_GROSS_LOSS_PASS, not infinity |
 | OD-03 | Month-end open positions | Must be reconciled; final policy required before production |
 | OD-04 | Simulated slippage and fee schedule by instrument | Configurable; no invented defaults |
 | OD-05 | Market-data vendors, redistribution rights, and latency SLA | Provider/legal review required |
@@ -140,10 +140,11 @@ The initial release is simulation-only. Release requires passing automated tests
 
 - The approved policy values are represented as versioned configuration, not scattered constants.
 - A month at 9.99% fails the return criterion; a month at exactly 10.00% meets that criterion.
-- Profit factor 0.99 fails; exactly 1.00 meets the numeric threshold when defined.
+- Profit factor 0.99 fails; exactly 1.00 passes. If gross profit > 0 and gross loss = 0, the profit-factor criterion passes using NO_GROSS_LOSS_PASS; if both are zero, it does not pass.
 - A failed month resets the consecutive streak to zero.
 - Profits above target in one month do not offset a later failed month.
 - Missing or inconsistent evidence yields REVIEW_REQUIRED.
+- Monthly trade sample sufficiency requires a recorded manual review and rationale; no fixed trade-count threshold is hard-coded.
 - Duplicate events do not change balances or qualification twice.
 - Historical trades and qualification results cannot be silently edited.
 - Twelve consecutive qualified months trigger final audit only.
