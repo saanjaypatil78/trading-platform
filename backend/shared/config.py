@@ -28,6 +28,10 @@ class Settings(BaseSettings):
     # RabbitMQ
     RABBITMQ_URL: Optional[str] = None
     
+    # Supabase Auth (backend-only configuration; never expose service-role keys)
+    SUPABASE_URL: Optional[str] = None
+    SUPABASE_ANON_KEY: Optional[str] = None
+    
     # JWT
     JWT_SECRET_KEY: str
     JWT_ALGORITHM: str = "HS256"
@@ -40,8 +44,8 @@ class Settings(BaseSettings):
     
     FINNHUB_API_KEY: Optional[str] = None
     
-    UPSTOX_API_KEY: str = "88112d04-5505-48a9-81ab-124aa04311b3"
-    UPSTOX_API_SECRET: str = "o963nixptz"
+    UPSTOX_API_KEY: Optional[str] = None
+    UPSTOX_API_SECRET: Optional[str] = None
     POLYGON_API_KEY: Optional[str] = None
     
     RATELIMIT_ENABLED: bool = True
