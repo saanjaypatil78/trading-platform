@@ -15,12 +15,17 @@ The existing collaboration schema already has append-only `document_updates`, ap
 - `onStoreDocument`, which is debounced persistence;
 - ordered inbound message processing per connection.
 
-The official provider API passes its `token` to server authentication. Source inspection of the current Hocuspocus v4 implementation shows that `Connection.processMessages()` awaits `beforeHandleMessage`, then awaits `MessageReceiver.apply()`. For Yjs sync frames, `MessageReceiver.readSyncMessage()` awaits `beforeSync` before dispatching SyncStep2/YjsUpdate to `readSyncStep2()`/`readUpdate()`; the success sync-status response is sent after the apply call. The document's Yjs update listener broadcasts synchronously during apply when `flushDelay: false`. Therefore `beforeSync` is the more precise durability hook: it exposes the sync subtype and decoded payload, allowing only actual Yjs content updates to be journaled before apply. This source-level order supports the design, but does not replace a pinned-version wire/integration test. See:
+The official provider API sends its `token` in the Hocuspocus authentication protocol message (not as a URL parameter). This ADR now pins its source review to **`@hocuspocus/server` v4.7.0**, signed release tag commit **`6ddc757`** (2026-09-09), rather than the moving `main` branch. In that source, `Connection.processMessages()` awaits `beforeHandleMessage`, then awaits `MessageReceiver.apply()`. For Yjs sync frames, `MessageReceiver.readSyncMessage()` awaits `beforeSync` with `{ type, payload: message.peekVarUint8Array() }` before dispatching SyncStep2/YjsUpdate to `readSyncStep2()`/`readUpdate()`. The payload is the raw varuint8array content after the sync subtype; SyncStep1 (type 0) must not be journaled as document content. `readSyncStep2()`/`readUpdate()` apply synchronously; the document update callback and broadcast run during apply when `flushDelay: false`, and the sync-status success frame is sent after apply. Hocuspocus v4.7.0 also serializes inbound messages per connection and closes/clears the queue when a hook throws. Therefore `beforeSync` is the most precise pre-apply durability hook. This is a pinned source-code finding, not a substitute for a wire-level integration test. See:
 
 - https://tiptap.dev/docs/hocuspocus/server/hooks
 - https://www.npmjs.com/package/@hocuspocus/provider
 - https://tiptap.dev/docs/hocuspocus/guides/persistence
-- https://github.com/ueberdosis/hocuspocus/blob/main/RELEASE_NOTES_V4.md
+- https://github.com/ueberdosis/hocuspocus/blob/v4.7.0/packages/server/src/Connection.ts
+- https://github.com/ueberdosis/hocuspocus/blob/v4.7.0/packages/server/src/MessageReceiver.ts
+- https://github.com/ueberdosis/hocuspocus/blob/v4.7.0/packages/server/src/Document.ts
+- https://github.com/ueberdosis/hocuspocus/blob/v4.7.0/packages/server/src/ClientConnection.ts
+- https://github.com/ueberdosis/hocuspocus/blob/v4.7.0/packages/provider/src/HocuspocusProvider.ts
+- https://github.com/ueberdosis/hocuspocus/blob/v4.7.0/RELEASE_NOTES_V4.md
 
 ## Proposed update pipeline
 
@@ -30,13 +35,13 @@ For each inbound document update:
 2. Authentication consumes the credential exactly once and binds immutable server context: session ID, user ID, workspace ID, document ID, role, and membership version. The client must not choose or override these fields.
 3. Use `beforeSync` as the primary journal hook. It provides `type` and a decoded `payload`. Persist only y-protocols SyncStep2 (type 1) and YjsUpdate (type 2). Do not persist SyncStep1 (type 0), awareness, stateless, or query-awareness messages as document content. Keep `beforeHandleMessage` for message-level limits/validation, not payload extraction.
 4. Open a PostgreSQL transaction. Lock in the established global order: active workspace membership row first, collaboration session row second, document row third. Revalidate that the session is consumed, unrevoked, open, scoped to this document, and that membership is still active with the same membership version and a role allowed to edit. Also reject if the Hocuspocus connection is read-only; the provider's read-only check occurs later in sync handling, so this journal hook must not rely on it to protect persistence.
-5. Validate the Yjs payload by applying it to an isolated scratch Y.Doc before committing. Reject malformed payloads and enforce message/byte limits before persistence.
+5. While holding the document row lock, create an isolated scratch Y.Doc initialized from the current in-memory document state (`encodeStateAsUpdate`/`applyUpdate`), attach an update listener, and apply the inbound payload to the scratch document. Reject malformed payloads and enforce message/byte limits before persistence. If the payload produces no new Yjs structs, treat it as a valid no-op and do not allocate a revision or append a journal row. Destroy the scratch document in a `finally` block. This validation must use the same locked document revision that the transaction will journal against.
 6. Derive a deterministic update idempotency key from the authenticated session ID, document ID, and exact update bytes. Use a collision-resistant digest and encode it into the schema's UUID field with UUID version/variant bits set. This makes a byte-identical retry from the same session id idempotent; it does not trust a client-supplied update ID.
 7. Under the document row lock, allocate the next monotonic content revision. Insert the exact binary update payload into `document_updates` and the corresponding audit event with the same idempotency key in the same transaction. Enforce unique update/audit keys. A duplicate insert must not allocate a new revision or duplicate the audit event.
 8. Commit PostgreSQL successfully before returning from `beforeSync`. If authorization, validation, insert, or commit fails, throw/reject so Hocuspocus does not apply or broadcast that update.
-9. After `beforeSync` returns successfully, Hocuspocus applies the update. The Yjs document update listener broadcasts it (synchronously when `flushDelay: false`), then the sync handler sends its success status. The actual wire ordering still requires an integration test.
-9. Periodically create binary Yjs snapshots from the document state and persist them with provider/version metadata. Snapshots are a recovery optimization, not the source of truth; replay retained append-only updates after the snapshot revision.
-11. On process restart, load the latest valid binary snapshot and replay subsequent committed updates before accepting connections.
+10. After `beforeSync` returns successfully, Hocuspocus applies the update. Configure `flushDelay: false` explicitly: the Yjs document update callback and peer broadcast then run synchronously during apply, and the sync handler sends its success status after apply. Do not rely on the default `flushDelay: 0`, which coalesces broadcasts using `setImmediate` and has different timing. The actual wire ordering still requires an integration test.
+11. Periodically create binary Yjs snapshots from the document state and persist them with provider/version metadata. Snapshots are a recovery optimization, not the source of truth; replay retained append-only updates after the snapshot revision.
+12. On process restart, load the latest valid binary snapshot and replay subsequent committed updates before accepting connections.
 
 ## Failure semantics
 
@@ -77,9 +82,10 @@ For each inbound document update:
 11. Verify VIEWER can read but cannot write, including attempts through raw WebSocket frames and the beforeSync hook.
 12. Verify binary snapshot + update replay reconstructs the same Yjs state as two connected clients.
 13. Verify payload/message/connection limits, rate limiting, graceful shutdown, and recovery under process restart.
+14. Verify SyncStep2 no-op/retransmission behavior: a valid duplicate that introduces no new Yjs structs must not allocate a revision or duplicate an audit record.
 
 ## Decision boundary
 
-The current v4 source establishes a promising internal order: `beforeSync` is awaited before `readSyncStep2`/`readUpdate`; Yjs apply triggers the document update listener and broadcast; the sync-success frame is sent after the apply call. However, this source review used the repository's current main branch, not a package version pinned in this project. The team must pin a release and test actual wire behavior. If the provider sends a success response or broadcasts before the pre-apply journal transaction completes, or if apply failure cannot force a safe document reload, reject this integration approach and implement a custom transport/protocol adapter or evaluate another provider.
+The pinned v4.7.0 source establishes the internal order described above. The repository must still add a pinned dependency and executable wire tests for actual frames, broadcast ordering, no-op SyncStep2 behavior, and failure recovery. The source review alone does not prove that a complete client/server session behaves as expected. If the provider sends a success response or broadcasts before the pre-apply journal transaction completes, or if apply failure cannot force a safe document reload, reject this integration approach and implement a custom transport/protocol adapter or evaluate another provider.
 
 No production provider decision is made by this ADR. TASK-002 remains incomplete until all mandatory tests pass, code review is complete, and the full frontend/backend acceptance suite succeeds.
